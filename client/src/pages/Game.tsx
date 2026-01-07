@@ -85,6 +85,7 @@ export default function Game() {
       pierce: 1,
       angle: 0, // shooting angle
       lastMoveAngle: 0, // for auto-aim direction if stationary
+      regen: 0.5, // HP per second
     },
 
     keys: { w: false, a: false, s: false, d: false },
@@ -185,6 +186,12 @@ export default function Game() {
       if (state.keys.a) dx -= 1;
       if (state.keys.d) dx += 1;
 
+      // Passive Regeneration
+      if (state.player.hp < state.player.maxHp) {
+        state.player.hp = Math.min(state.player.maxHp, state.player.hp + state.player.regen * dt);
+        setUiState(s => ({ ...s, hp: state.player.hp }));
+      }
+
       // Normalize diagonal
       if (dx !== 0 || dy !== 0) {
         const len = Math.sqrt(dx*dx + dy*dy);
@@ -246,7 +253,7 @@ export default function Game() {
         const dist = Math.sqrt(dx*dx + dy*dy);
         
         // Move towards player
-        const speed = e.type === 'boss' ? 50 : 100 + (state.level * 2);
+        const speed = e.type === 'boss' ? 30 : 60 + (state.level * 2);
         e.x += (dx / dist) * speed * dt;
         e.y += (dy / dist) * speed * dt;
 
@@ -493,6 +500,7 @@ export default function Game() {
       case 'bulletSpeed': state.player.bulletSpeed *= 1.2; break;
       case 'bulletSize': state.player.bulletSize *= 1.2; break;
       case 'pierce': state.player.pierce += 1; break;
+      case 'regen': state.player.regen += 0.5; break;
     }
     state.isPaused = false;
     setUiState(s => ({ ...s, showUpgrade: false, isPaused: false }));
@@ -603,7 +611,10 @@ export default function Game() {
 
       {/* PAUSE OVERLAY */}
       {uiState.isPaused && !uiState.showUpgrade && !uiState.isGameOver && (
-        <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div 
+          className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm cursor-pointer"
+          onClick={handlePauseToggle}
+        >
           <h1 className="text-6xl font-arcade text-white animate-pulse">PAUSED</h1>
         </div>
       )}
@@ -619,8 +630,10 @@ export default function Game() {
       </div>
 
       {/* MOBILE CONTROLS (Overlay on bottom) */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 md:hidden">
-        <DPad onDirectionChange={handleVirtualPad} />
+      <div className="absolute bottom-12 left-0 right-0 z-30 md:hidden flex justify-center pointer-events-none">
+        <div className="pointer-events-auto">
+          <DPad onDirectionChange={handleVirtualPad} />
+        </div>
       </div>
 
       {/* MENUS */}

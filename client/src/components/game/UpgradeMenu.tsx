@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GameButton } from '../ui/GameButton';
-import { Zap, Move, ChevronsUp, Shield, Crosshair } from 'lucide-react';
+import { Zap, Move, ChevronsUp, Shield, Crosshair, HeartPulse } from 'lucide-react';
 
 interface UpgradeOption {
   id: string;
@@ -20,6 +20,7 @@ const UPGRADES: UpgradeOption[] = [
   { id: 'bulletSpeed', label: 'Velocity', icon: <ChevronsUp />, description: 'Projectiles travel 20% faster' },
   { id: 'bulletSize', label: 'Massive', icon: <Crosshair />, description: 'Bullets are 20% larger' },
   { id: 'pierce', label: 'Piercing', icon: <Shield />, description: 'Bullets pass through +1 enemy' },
+  { id: 'regen', label: 'Recovery', icon: <HeartPulse />, description: 'Increase passive regeneration' },
 ];
 
 export const UpgradeMenu: React.FC<UpgradeMenuProps> = ({ onSelect }) => {
