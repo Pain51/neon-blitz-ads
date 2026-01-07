@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pause, Star, X } from 'lucide-react';
+import { Pause, Star, X, Gamepad2 } from 'lucide-react';
 import { DPad } from '@/components/game/DPad';
+import { Joystick } from '@/components/game/Joystick';
 import { UpgradeMenu } from '@/components/game/UpgradeMenu';
 import { GameOverMenu } from '@/components/game/GameOverMenu';
 
@@ -93,6 +94,15 @@ export default function Game() {
     enemies: [] as Entity[],
     xpGems: [] as Entity[],
     particles: [] as Particle[],
+    coins: 0,
+    upgradeLevels: {
+      fireRate: 0,
+      moveSpeed: 0,
+      bulletSpeed: 0,
+      bulletSize: 0,
+      pierce: 0,
+      regen: 0,
+    } as Record<string, number>,
   });
 
   // React State for UI updates (keep minimal to avoid re-renders)
@@ -106,7 +116,10 @@ export default function Game() {
     isPaused: false,
     showUpgrade: false,
     isGameOver: false,
-    revivesLeft: 3
+    revivesLeft: 3,
+    coins: 0,
+    controlType: 'dpad' as 'dpad' | 'joystick',
+    upgradeLevels: {} as Record<string, number>,
   });
 
   // --- GAME LOOP ---
@@ -321,6 +334,7 @@ export default function Game() {
 
         if (dist < state.player.radius + g.radius) {
           state.xp += g.xpValue!;
+          state.coins += g.xpValue! / 2; // Earn coins from gems
           state.xpGems.splice(i, 1);
 
           // Level Up Check
@@ -335,10 +349,17 @@ export default function Game() {
               xp: state.xp,
               xpToNextLevel: state.xpToNextLevel,
               showUpgrade: true,
-              isPaused: true
+              isPaused: true,
+              coins: state.coins,
+              upgradeLevels: { ...state.upgradeLevels }
             }));
           } else {
-            setUiState(s => ({ ...s, xp: state.xp, xpToNextLevel: state.xpToNextLevel }));
+            setUiState(s => ({ 
+              ...s, 
+              xp: state.xp, 
+              xpToNextLevel: state.xpToNextLevel,
+              coins: state.coins 
+            }));
           }
         }
       }
@@ -494,6 +515,8 @@ export default function Game() {
   // --- ACTIONS ---
   const handleUpgradeSelect = (id: string) => {
     const state = gameState.current;
+    state.upgradeLevels[id] = (state.upgradeLevels[id] || 0) + 1;
+    
     switch(id) {
       case 'fireRate': state.player.fireRate *= 0.85; break;
       case 'moveSpeed': state.player.speed *= 1.1; break;
@@ -503,7 +526,19 @@ export default function Game() {
       case 'regen': state.player.regen += 0.5; break;
     }
     state.isPaused = false;
-    setUiState(s => ({ ...s, showUpgrade: false, isPaused: false }));
+    setUiState(s => ({ 
+      ...s, 
+      showUpgrade: false, 
+      isPaused: false,
+      upgradeLevels: { ...state.upgradeLevels }
+    }));
+  };
+
+  const toggleControls = () => {
+    setUiState(s => ({
+      ...s,
+      controlType: s.controlType === 'dpad' ? 'joystick' : 'dpad'
+    }));
   };
 
   const handlePauseToggle = () => {
@@ -594,6 +629,13 @@ export default function Game() {
               <Star className="w-6 h-6" />
             </button>
             <button 
+              onClick={toggleControls}
+              className="p-2 rounded bg-blue-500/20 text-blue-400 border border-blue-500/50 hover:bg-blue-500 hover:text-white transition-colors"
+              title="Toggle Controls"
+            >
+              <Gamepad2 className="w-6 h-6" />
+            </button>
+            <button 
               onClick={handlePauseToggle}
               className="p-2 rounded bg-white/10 text-white border border-white/20 hover:bg-white/20 transition-colors"
             >
@@ -632,14 +674,22 @@ export default function Game() {
       {/* MOBILE CONTROLS (Overlay on bottom) */}
       <div className="absolute bottom-12 left-0 right-0 z-30 md:hidden flex justify-center pointer-events-none">
         <div className="pointer-events-auto">
-          <DPad onDirectionChange={handleVirtualPad} />
+          {uiState.controlType === 'dpad' ? (
+            <DPad onDirectionChange={handleVirtualPad} />
+          ) : (
+            <Joystick onDirectionChange={handleVirtualPad} />
+          )}
         </div>
       </div>
 
       {/* MENUS */}
       <AnimatePresence>
         {uiState.showUpgrade && (
-          <UpgradeMenu onSelect={handleUpgradeSelect} />
+          <UpgradeMenu 
+            onSelect={handleUpgradeSelect} 
+            coins={uiState.coins}
+            upgradeLevels={uiState.upgradeLevels}
+          />
         )}
         {uiState.isGameOver && (
           <GameOverMenu 
