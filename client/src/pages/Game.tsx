@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Pause, Star, X } from 'lucide-react';
 import { DPad } from '@/components/game/DPad';
 import { UpgradeMenu } from '@/components/game/UpgradeMenu';
