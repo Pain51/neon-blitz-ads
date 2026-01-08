@@ -1058,12 +1058,12 @@ export default function Game() {
     const rect = mainEl.getBoundingClientRect();
     
     if (draggingJoystick === 'move') {
-      const x = Math.max(60, Math.min(clientX - rect.left, rect.width / 2 - 60));
-      const y = Math.max(60, Math.min(rect.height - (clientY - rect.top), rect.height - 60));
+      const x = Math.max(10, Math.min(clientX - rect.left, rect.width / 2 - 10));
+      const y = Math.max(10, Math.min(rect.height - (clientY - rect.top), rect.height - 80));
       setJoystickPositions((prev: typeof joystickPositions) => ({ ...prev, move: { x, y } }));
     } else {
-      const x = Math.max(60, Math.min(rect.right - clientX, rect.width / 2 - 60));
-      const y = Math.max(60, Math.min(rect.height - (clientY - rect.top), rect.height - 60));
+      const x = Math.max(10, Math.min(rect.right - clientX, rect.width / 2 - 10));
+      const y = Math.max(10, Math.min(rect.height - (clientY - rect.top), rect.height - 80));
       setJoystickPositions((prev: typeof joystickPositions) => ({ ...prev, shoot: { x, y } }));
     }
   };
