@@ -287,46 +287,48 @@ export default function Home() {
             INICIAR MISIÓN
           </GameButton>
 
-          <div className="grid grid-cols-3 gap-4 w-full">
+          <div className="grid grid-cols-2 gap-3 w-full">
             <button 
               onClick={() => setShowPermanentUpgrades(true)}
-              className="p-4 bg-black/40 rounded border border-white/5 flex flex-col items-center text-center hover:bg-white/10 transition-colors"
+              className="p-3 bg-black/40 rounded-lg border border-white/10 flex items-center gap-3 hover:bg-white/10 transition-colors"
               data-testid="button-upgrades"
             >
-              <Star className="w-8 h-8 text-yellow-500 mb-2" />
-              <span className="text-xs text-muted-foreground uppercase font-bold">Mejoras</span>
-              <span className="text-sm font-bold text-yellow-500">PERMANENTES</span>
+              <Star className="w-6 h-6 text-yellow-500 shrink-0" />
+              <div className="flex flex-col items-start text-left min-w-0">
+                <span className="text-xs font-bold text-white truncate">Mejoras</span>
+                <span className="text-[10px] text-yellow-500">Permanentes</span>
+              </div>
             </button>
             <button 
               onClick={() => setShowAchievements(true)}
-              className="p-4 bg-black/40 rounded border border-white/5 flex flex-col items-center text-center hover:bg-white/10 transition-colors"
+              className="p-3 bg-black/40 rounded-lg border border-white/10 flex items-center gap-3 hover:bg-white/10 transition-colors"
               data-testid="button-achievements"
             >
-              <Trophy className="w-8 h-8 text-yellow-500 mb-2" />
-              <span className="text-xs text-muted-foreground uppercase font-bold">Logros</span>
-              <span className="text-sm font-bold text-yellow-500">{unlockedAchievements.length}/{ALL_ACHIEVEMENTS.length}</span>
-            </button>
-            <div className="p-4 bg-black/40 rounded border border-white/5 flex flex-col items-center text-center">
-              <div className="flex flex-wrap gap-1 justify-center mt-1">
-                {[
-                  {id: 'easy', label: 'F'},
-                  {id: 'medium', label: 'N'},
-                  {id: 'hard', label: 'D'},
-                  {id: 'extreme', label: 'E'}
-                ].map((d) => (
-                  <button
-                    key={d.id}
-                    onClick={() => setDifficulty(d.id as any)}
-                    className={`text-[10px] px-2 py-1 rounded font-arcade border ${difficulty === d.id ? 'bg-primary border-primary text-white' : 'border-white/10 text-muted-foreground'}`}
-                  >
-                    {d.label}
-                  </button>
-                ))}
+              <Trophy className="w-6 h-6 text-yellow-500 shrink-0" />
+              <div className="flex flex-col items-start text-left min-w-0">
+                <span className="text-xs font-bold text-white truncate">Logros</span>
+                <span className="text-[10px] text-yellow-500">{unlockedAchievements.length}/{ALL_ACHIEVEMENTS.length}</span>
               </div>
-              <span className="text-xs text-muted-foreground uppercase font-bold mt-2">Dificultad</span>
-              <span className={`text-sm font-bold ${difficulty === 'extreme' ? 'text-destructive' : 'text-primary'}`}>
-                {difficulty === 'easy' ? 'FÁCIL' : difficulty === 'medium' ? 'NORMAL' : difficulty === 'hard' ? 'DIFÍCIL' : 'EXTREMO'}
-              </span>
+            </button>
+          </div>
+
+          <div className="w-full p-3 bg-black/40 rounded-lg border border-white/10">
+            <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-2">Dificultad</span>
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                {id: 'easy', label: 'Fácil'},
+                {id: 'medium', label: 'Normal'},
+                {id: 'hard', label: 'Difícil'},
+                {id: 'extreme', label: 'Extremo'}
+              ].map((d) => (
+                <button
+                  key={d.id}
+                  onClick={() => setDifficulty(d.id as any)}
+                  className={`text-[9px] md:text-[10px] px-2 py-2 rounded font-bold border transition-all truncate ${difficulty === d.id ? (d.id === 'extreme' ? 'bg-red-600 border-red-500 text-white' : 'bg-primary border-primary text-white') : 'border-white/10 text-muted-foreground hover:bg-white/5'}`}
+                >
+                  {d.label}
+                </button>
+              ))}
             </div>
           </div>
         </motion.div>
