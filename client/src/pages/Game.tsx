@@ -153,24 +153,26 @@ export default function Game() {
       
       let type: 'normal' | 'special' | 'boss' = 'normal';
       let radius = ENEMY_SIZE_NORMAL / 2;
-      let hp = (10 + (state.level * 5)) * statMult;
-      let speed = (100 + (state.level * 2)) * (1 + (statMult - 1) * 0.2); // Slower scaling for speed
+      let hp = 4; // Rojo normal
+      let speed = (100 + (state.level * 2)) * (1 + (statMult - 1) * 0.2);
       let color = COLOR_ENEMY;
       let xpValue = 10;
 
       if (isBoss) {
         type = 'boss';
         radius = ENEMY_SIZE_BOSS / 2;
-        hp = 500 + (state.level * 50);
+        hp = 40; // Cuadrado grande
         speed = 50;
         color = COLOR_BOSS;
         xpValue = 500;
       } else if (isSpecial) {
         type = 'special';
         color = COLOR_SPECIAL;
-        hp *= 2;
+        hp = 8; // Morado
         xpValue = 50;
       }
+      
+      hp *= statMult; // Aplicar dificultad sobre la nueva base
 
       // Spawn at edge
       let x, y;
@@ -245,16 +247,43 @@ export default function Game() {
         state.shootTimer = state.player.fireRate;
         const angle = (dx !== 0 || dy !== 0) ? Math.atan2(dy, dx) : state.player.lastMoveAngle;
         
-        state.bullets.push({
-          id: Math.random(),
-          x: state.player.x,
-          y: state.player.y,
-          vx: Math.cos(angle) * state.player.bulletSpeed,
-          vy: Math.sin(angle) * state.player.bulletSpeed,
-          radius: state.player.bulletSize,
-          color: COLOR_BULLET,
-          hp: 1, maxHp: 1, pierce: state.player.pierce
-        });
+        const weaponType = new URLSearchParams(window.location.search).get('weapon') || 'normal';
+
+        if (weaponType === 'laser') {
+          state.bullets.push({
+            id: Math.random(),
+            x: state.player.x, y: state.player.y,
+            vx: Math.cos(angle) * state.player.bulletSpeed * 2,
+            vy: Math.sin(angle) * state.player.bulletSpeed * 2,
+            radius: 2, color: '#00ffff',
+            hp: 1, maxHp: 1, pierce: 10
+          });
+          state.shootTimer = 0.05; // Fast firing laser
+        } else if (weaponType === 'shotgun') {
+          for (let i = -2; i <= 2; i++) {
+            const spreadAngle = angle + (i * 0.2);
+            state.bullets.push({
+              id: Math.random(),
+              x: state.player.x, y: state.player.y,
+              vx: Math.cos(spreadAngle) * state.player.bulletSpeed,
+              vy: Math.sin(spreadAngle) * state.player.bulletSpeed,
+              radius: state.player.bulletSize,
+              color: COLOR_BULLET,
+              hp: 1, maxHp: 1, pierce: state.player.pierce
+            });
+          }
+          state.shootTimer = state.player.fireRate * 2;
+        } else {
+          state.bullets.push({
+            id: Math.random(),
+            x: state.player.x, y: state.player.y,
+            vx: Math.cos(angle) * state.player.bulletSpeed,
+            vy: Math.sin(angle) * state.player.bulletSpeed,
+            radius: state.player.bulletSize,
+            color: COLOR_BULLET,
+            hp: 1, maxHp: 1, pierce: state.player.pierce
+          });
+        }
       }
 
       // 3. Bullets
@@ -310,12 +339,17 @@ export default function Game() {
           const dbx = e.x - b.x;
           const dby = e.y - b.y;
           if (Math.sqrt(dbx*dbx + dby*dby) < e.radius + b.radius) {
+            const weaponType = new URLSearchParams(window.location.search).get('weapon') || 'normal';
+            let baseDamage = 2; // Daño base normal solicitado
+            if (weaponType === 'laser') baseDamage = 0.3;
+            if (weaponType === 'shotgun') baseDamage = 0.5;
+
             const saved = localStorage.getItem('permanentUpgrades');
             const perms = saved ? JSON.parse(saved) : { baseDmg: 0 };
-            const baseDamage = 10 + (perms.baseDmg * 2) + (uiState.tempSkills.dmg * 3);
+            const finalDamage = baseDamage + (perms.baseDmg * 0.5) + (uiState.tempSkills.dmg * 1);
             const isCrit = Math.random() < (uiState.tempSkills.crit * 0.05);
             
-            e.hp -= isCrit ? baseDamage * 2 : baseDamage;
+            e.hp -= isCrit ? finalDamage * 2 : finalDamage;
             b.pierce--;
             
             // Effect
@@ -599,7 +633,7 @@ export default function Game() {
   const handleManualUpgradeOpen = () => {
     if (uiState.isGameOver) return;
     gameState.current.isPaused = true;
-    setUiState(s => ({ ...s, isPaused: true, showUpgrade: true }));
+    setUiState(s => ({ ...s, isPaused: true, showTempSkills: true }));
   };
 
   const handleVirtualPad = (dx: number, dy: number) => {
@@ -753,13 +787,20 @@ export default function Game() {
                     key={skill.id}
                     onClick={() => {
                       if (uiState.skillPoints > 0) {
+                        const nextSkillPoints = uiState.skillPoints - 1;
+                        const shouldClose = nextSkillPoints === 0;
+                        
                         setUiState(s => ({
                           ...s,
-                          skillPoints: s.skillPoints - 1,
+                          skillPoints: nextSkillPoints,
                           tempSkills: { ...s.tempSkills, [skill.id]: (s.tempSkills[skill.id] || 0) + 1 },
-                          showTempSkills: s.skillPoints > 1,
-                          isPaused: s.skillPoints > 1
+                          showTempSkills: !shouldClose,
+                          isPaused: !shouldClose
                         }));
+                        
+                        if (shouldClose) {
+                          gameState.current.isPaused = false;
+                        }
                       }
                     }}
                     className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10"

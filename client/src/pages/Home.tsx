@@ -11,7 +11,13 @@ export default function Home() {
   const { data: scores, isLoading } = useScores();
 
   const [difficulty, setDifficulty] = React.useState<'easy' | 'medium' | 'hard' | 'extreme'>('medium');
+  const [weapon, setWeapon] = React.useState<'normal' | 'laser' | 'shotgun'>('normal');
   const [showPermanentUpgrades, setShowPermanentUpgrades] = React.useState(false);
+
+  const startMission = () => {
+    setLocation(`/game?difficulty=${difficulty}&weapon=${weapon}`);
+  };
+
   const [goldCoins, setGoldCoins] = React.useState(() => {
     const saved = localStorage.getItem('goldCoins');
     return saved ? parseInt(saved) : 0;
@@ -30,10 +36,6 @@ export default function Home() {
     localStorage.setItem('goldCoins', goldCoins.toString());
   }, [permUpgrades, goldCoins]);
 
-  const startMission = () => {
-    setLocation(`/game?difficulty=${difficulty}`);
-  };
-
   const buyUpgrade = (key: string, cost: number) => {
     if (goldCoins >= cost) {
       setGoldCoins(c => c - cost);
@@ -43,6 +45,27 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      {/* Weapon Selection */}
+      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 bg-black/40 p-4 rounded-xl border border-white/5 shadow-2xl">
+        <h3 className="text-xs font-arcade text-muted-foreground uppercase mb-2">Weapon System</h3>
+        <div className="flex gap-2">
+          {[
+            { id: 'normal', label: 'Classic', desc: 'Balanced' },
+            { id: 'laser', label: 'Laser', desc: '0.3 DMG / High Freq' },
+            { id: 'shotgun', label: 'Shotgun', desc: '0.5 DMG x 5' }
+          ].map(w => (
+            <button
+              key={w.id}
+              onClick={() => setWeapon(w.id as any)}
+              className={`p-2 rounded border transition-all flex flex-col items-center gap-1 ${weapon === w.id ? 'bg-primary border-primary text-white scale-105' : 'bg-black/40 border-white/10 text-muted-foreground hover:bg-white/5'}`}
+            >
+              <span className="text-[10px] font-bold">{w.label}</span>
+              <span className="text-[8px] opacity-60 leading-none">{w.desc}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Permanent Upgrades Modal */}
       <AnimatePresence>
         {showPermanentUpgrades && (

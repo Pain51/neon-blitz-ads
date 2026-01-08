@@ -25,9 +25,11 @@ export const Joystick: React.FC<JoystickProps> = ({ onDirectionChange }) => {
       dy = (dy / distance) * radius;
     }
 
+    const normalizedX = dx / radius;
+    const normalizedY = dy / radius;
+
     setPosition({ x: dx, y: dy });
-    // Correct 360 movement: use actual dx/dy ratios
-    onDirectionChange(dx / radius, dy / radius);
+    onDirectionChange(normalizedX, normalizedY);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {

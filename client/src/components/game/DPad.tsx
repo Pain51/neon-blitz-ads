@@ -33,7 +33,7 @@ export const DPad: React.FC<DPadProps> = ({ onDirectionChange }) => {
   `;
 
   return (
-    <div className="grid grid-cols-3 gap-2 select-none touch-none" onContextMenu={preventContext}>
+    <div className="grid grid-cols-3 gap-2 select-none touch-none scale-75 md:scale-100" onContextMenu={preventContext}>
       <div />
       <div 
         className={btnClass(0, -1)}
