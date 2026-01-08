@@ -770,8 +770,8 @@ export default function Game() {
       </div>
 
       {/* MOBILE CONTROLS (Overlay on bottom) */}
-      <div className="absolute bottom-12 left-0 right-0 z-30 md:hidden flex justify-center pointer-events-none">
-        <div className="pointer-events-auto">
+      <div className="absolute bottom-6 left-0 right-0 z-30 md:hidden flex justify-center pointer-events-none">
+        <div className="pointer-events-auto scale-75 origin-bottom">
           {uiState.controlType === 'dpad' ? (
             <DPad onDirectionChange={handleVirtualPad} />
           ) : (
