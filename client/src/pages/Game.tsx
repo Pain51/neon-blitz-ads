@@ -616,38 +616,38 @@ export default function Game() {
 
   return (
     <div className="flex flex-col h-screen bg-[#0a0a0a] text-white overflow-hidden font-press-start select-none">
-      <header className="flex justify-between items-center p-4 border-b border-white/10 bg-black/50 backdrop-blur-md">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-            <span className="text-xl">{uiState.score.toLocaleString()}</span>
+      <header className="flex justify-between items-center p-2 md:p-4 border-b border-white/10 bg-black/50 backdrop-blur-md">
+        <div className="flex flex-col gap-0 md:gap-1">
+          <div className="flex items-center gap-1 md:gap-2">
+            <Star className="w-4 h-4 md:w-5 md:h-5 text-yellow-400 fill-yellow-400" />
+            <span className="text-sm md:text-xl">{uiState.score.toLocaleString()}</span>
           </div>
-          <div className="flex items-center gap-2 text-xs text-green-400">
-            <Trophy className="w-3 h-3" />
-            <span>LEVEL {uiState.level}</span>
+          <div className="flex items-center gap-1 text-[8px] md:text-xs text-green-400">
+            <Trophy className="w-2 h-2 md:w-3 md:h-3" />
+            <span>NVL {uiState.level}</span>
           </div>
         </div>
         
-        <div className="flex flex-col items-center gap-2 flex-1 max-w-xs px-4">
-          <div className="w-full h-4 bg-gray-800 rounded-full border-2 border-white/20 relative overflow-hidden">
+        <div className="flex flex-col items-center gap-1 md:gap-2 flex-1 max-w-[120px] md:max-w-xs px-2 md:px-4">
+          <div className="w-full h-3 md:h-4 bg-gray-800 rounded-full border border-white/20 relative overflow-hidden">
             <div className="h-full bg-blue-500 shadow-[0_0_10px_#3b82f6] transition-all duration-300" style={{ width: `${(uiState.xp / uiState.xpToNextLevel) * 100}%` }} />
-            <span className="absolute inset-0 flex items-center justify-center text-[8px] uppercase tracking-wider font-bold">SIGUIENTE XP: {uiState.xpToNextLevel - uiState.xp}</span>
+            <span className="absolute inset-0 flex items-center justify-center text-[6px] md:text-[8px] uppercase tracking-wider font-bold">XP: {uiState.xpToNextLevel - uiState.xp}</span>
           </div>
-          <div className="w-full h-4 bg-gray-800 rounded-full border-2 border-white/20 relative overflow-hidden">
+          <div className="w-full h-3 md:h-4 bg-gray-800 rounded-full border border-white/20 relative overflow-hidden">
             <div className="h-full bg-red-500 shadow-[0_0_10px_#ef4444] transition-all duration-300" style={{ width: `${(uiState.hp / uiState.maxHp) * 100}%` }} />
-            <span className="absolute inset-0 flex items-center justify-center text-[8px] uppercase tracking-wider font-bold">VIDA: {Math.ceil(uiState.hp)}/{uiState.maxHp}</span>
+            <span className="absolute inset-0 flex items-center justify-center text-[6px] md:text-[8px] uppercase tracking-wider font-bold">HP: {Math.ceil(uiState.hp)}</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
           <div className="flex flex-col items-end gap-1">
-            <div className="flex items-center gap-2 text-yellow-500">
-              <span className="text-sm">{uiState.coins}</span>
-              <div className="w-4 h-4 rounded-full bg-yellow-500 border border-yellow-300 shadow-[0_0_5px_#eab308]" />
+            <div className="flex items-center gap-1 md:gap-2 text-yellow-500">
+              <span className="text-xs md:text-sm">{uiState.coins}</span>
+              <div className="w-3 h-3 md:w-4 md:h-4 rounded-full bg-yellow-500 border border-yellow-300 shadow-[0_0_5px_#eab308]" />
             </div>
           </div>
-          <button onClick={handlePauseToggle} className="p-2 hover:bg-white/10 rounded-lg transition-colors border border-white/10">
-            <Pause className="w-6 h-6" />
+          <button onClick={handlePauseToggle} className="p-1 md:p-2 hover:bg-white/10 rounded-lg transition-colors border border-white/10">
+            <Pause className="w-4 h-4 md:w-6 md:h-6" />
           </button>
         </div>
       </header>
@@ -656,11 +656,11 @@ export default function Game() {
         <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} className="max-w-full max-h-full border-2 border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.5)]" />
         
         {uiState.controlType === 'dpad' ? (
-          <div className="absolute bottom-8 left-8"> <DPad onDirectionChange={handleMoveJoystick} /> </div>
+          <div className="absolute bottom-2 left-2 transform scale-[0.5] md:scale-100 origin-bottom-left z-30"> <DPad onDirectionChange={handleMoveJoystick} /> </div>
         ) : (
-          <div className="absolute bottom-16 left-16"> <Joystick size={120} onMove={handleMoveJoystick} label="MOVER" /> </div>
+          <div className="absolute bottom-10 left-2 transform scale-[0.5] md:scale-100 origin-bottom-left z-30"> <Joystick size={120} onMove={handleMoveJoystick} label="MOVER" /> </div>
         )}
-        <div className="absolute bottom-16 right-16"> <Joystick size={120} onMove={handleShootJoystick} label="DISPARAR" /> </div>
+        <div className="absolute bottom-10 right-2 transform scale-[0.5] md:scale-100 origin-bottom-right z-30"> <Joystick size={120} onMove={handleShootJoystick} label="DISPARAR" /> </div>
 
         <AnimatePresence>
           {uiState.showTempSkills && (
