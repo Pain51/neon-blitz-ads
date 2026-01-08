@@ -9,6 +9,12 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const { data: scores, isLoading } = useScores();
 
+  const [difficulty, setDifficulty] = React.useState<'easy' | 'medium' | 'hard' | 'extreme'>('medium');
+
+  const startMission = () => {
+    setLocation(`/game?difficulty=${difficulty}`);
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* Background Ambience */}
@@ -42,22 +48,37 @@ export default function Home() {
           <GameButton 
             size="lg" 
             className="w-full h-20 text-xl flex items-center justify-center gap-4 group"
-            onClick={() => setLocation('/game')}
+            onClick={startMission}
           >
             <Play className="w-8 h-8 group-hover:animate-pulse" />
             START MISSION
           </GameButton>
 
           <div className="grid grid-cols-2 gap-4 w-full">
+            <button 
+              onClick={() => {/* TODO: Permanent Upgrades Menu */}}
+              className="p-4 bg-black/40 rounded border border-white/5 flex flex-col items-center text-center hover:bg-white/10 transition-colors"
+            >
+              <Star className="w-8 h-8 text-yellow-500 mb-2" />
+              <span className="text-xs text-muted-foreground uppercase font-bold">Upgrades</span>
+              <span className="text-sm font-bold text-yellow-500">PERMANENT</span>
+            </button>
             <div className="p-4 bg-black/40 rounded border border-white/5 flex flex-col items-center text-center">
-              <Crosshair className="w-8 h-8 text-secondary mb-2" />
-              <span className="text-xs text-muted-foreground uppercase font-bold">Auto-Fire</span>
-              <span className="text-sm font-bold">ENABLED</span>
-            </div>
-            <div className="p-4 bg-black/40 rounded border border-white/5 flex flex-col items-center text-center">
-              <Skull className="w-8 h-8 text-destructive mb-2" />
-              <span className="text-xs text-muted-foreground uppercase font-bold">Difficulty</span>
-              <span className="text-sm font-bold text-destructive">EXTREME</span>
+              <div className="flex flex-wrap gap-1 justify-center mt-1">
+                {['easy', 'medium', 'hard', 'extreme'].map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setDifficulty(d as any)}
+                    className={`text-[10px] px-2 py-1 rounded font-arcade border ${difficulty === d ? 'bg-primary border-primary text-white' : 'border-white/10 text-muted-foreground'}`}
+                  >
+                    {d[0]}
+                  </button>
+                ))}
+              </div>
+              <span className="text-xs text-muted-foreground uppercase font-bold mt-2">Difficulty</span>
+              <span className={`text-sm font-bold ${difficulty === 'extreme' ? 'text-destructive' : 'text-primary'}`}>
+                {difficulty.toUpperCase()}
+              </span>
             </div>
           </div>
         </motion.div>

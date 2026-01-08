@@ -26,6 +26,7 @@ export const Joystick: React.FC<JoystickProps> = ({ onDirectionChange }) => {
     }
 
     setPosition({ x: dx, y: dy });
+    // Correct 360 movement: use actual dx/dy ratios
     onDirectionChange(dx / radius, dy / radius);
   };
 

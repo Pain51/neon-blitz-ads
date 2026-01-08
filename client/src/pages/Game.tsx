@@ -194,28 +194,32 @@ export default function Game() {
       // 1. Player Movement
       let dx = 0;
       let dy = 0;
+
+      // Handle both keyboard and virtual controls properly
       if (state.keys.w) dy -= 1;
       if (state.keys.s) dy += 1;
       if (state.keys.a) dx -= 1;
       if (state.keys.d) dx += 1;
+
+      // If using virtual controls (like Joystick), they directly set keys which is fine
+      // but let's ensure normalization only happens if we have values
+      if (dx !== 0 || dy !== 0) {
+        const len = Math.sqrt(dx*dx + dy*dy);
+        // If it's a joystick value (not just 1 or -1), use it directly but capped at 1
+        const moveX = dx / (len > 1 ? len : 1);
+        const moveY = dy / (len > 1 ? len : 1);
+        
+        state.player.x += moveX * state.player.speed * dt;
+        state.player.y += moveY * state.player.speed * dt;
+        state.player.lastMoveAngle = Math.atan2(moveY, moveX);
+      }
 
       // Passive Regeneration
       if (state.player.hp < state.player.maxHp) {
         state.player.hp = Math.min(state.player.maxHp, state.player.hp + state.player.regen * dt);
         setUiState(s => ({ ...s, hp: state.player.hp }));
       }
-
-      // Normalize diagonal
-      if (dx !== 0 || dy !== 0) {
-        const len = Math.sqrt(dx*dx + dy*dy);
-        dx /= len;
-        dy /= len;
-        state.player.lastMoveAngle = Math.atan2(dy, dx);
-      }
-
-      state.player.x += dx * state.player.speed * dt;
-      state.player.y += dy * state.player.speed * dt;
-
+      
       // Bound player
       state.player.x = Math.max(state.player.radius, Math.min(CANVAS_WIDTH - state.player.radius, state.player.x));
       state.player.y = Math.max(state.player.radius, Math.min(CANVAS_HEIGHT - state.player.radius, state.player.y));
@@ -487,6 +491,10 @@ export default function Game() {
   // --- KEYBOARD CONTROLS ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        handleManualUpgradeOpen();
+      }
       const k = gameState.current.keys;
       switch(e.key.toLowerCase()) {
         case 'w': case 'arrowup': k.w = true; break;
