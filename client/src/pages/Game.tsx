@@ -114,9 +114,13 @@ export default function Game() {
     } as Record<string, number>,
   });
 
-  const { playSound, setEnabled: setAudioEnabled } = useGameAudio();
+  const { playSound, setEnabled: setAudioEnabled, startMusic, stopMusic } = useGameAudio();
   const playSoundRef = useRef(playSound);
   playSoundRef.current = playSound;
+  const startMusicRef = useRef(startMusic);
+  startMusicRef.current = startMusic;
+  const stopMusicRef = useRef(stopMusic);
+  stopMusicRef.current = stopMusic;
   
   const [audioEnabled, setAudioEnabledState] = useState(true);
   
@@ -147,6 +151,11 @@ export default function Game() {
     const newValue = !audioEnabled;
     setAudioEnabledState(newValue);
     setAudioEnabled(newValue);
+    if (newValue) {
+      startMusicRef.current();
+    } else {
+      stopMusicRef.current();
+    }
   };
 
   useEffect(() => {
@@ -286,9 +295,9 @@ export default function Game() {
         state.shootTimer = state.player.fireRate;
         const angle = shootAngle;
         const weaponType = new URLSearchParams(window.location.search).get('weapon') || 'normal';
-        playSoundRef.current('shoot');
 
         if (weaponType === 'laser') {
+          playSoundRef.current('shootLaser');
           state.bullets.push({
             id: Math.random(),
             x: state.player.x, y: state.player.y,
@@ -299,6 +308,7 @@ export default function Game() {
           });
           state.shootTimer = 0.05;
         } else if (weaponType === 'shotgun') {
+          playSoundRef.current('shootShotgun');
           for (let i = -3; i <= 3; i++) {
             const spreadAngle = angle + (i * 0.12);
             state.bullets.push({
@@ -313,6 +323,7 @@ export default function Game() {
           }
           state.shootTimer = state.player.fireRate * 2;
         } else {
+          playSoundRef.current('shootNormal');
           state.bullets.push({
             id: Math.random(),
             x: state.player.x, y: state.player.y,
@@ -426,6 +437,8 @@ export default function Game() {
             state.xpToNextLevel = Math.floor(state.xpToNextLevel * 1.5);
             state.isPaused = true;
             playSoundRef.current('levelUp');
+            stopMusicRef.current();
+            setTimeout(() => playSoundRef.current('menuOpen'), 400);
             setUiState(s => ({
               ...s,
               level: state.level,
@@ -586,6 +599,17 @@ export default function Game() {
     }
   }, []);
 
+  useEffect(() => {
+    const startGameMusic = () => {
+      startMusicRef.current();
+    };
+    const timer = setTimeout(startGameMusic, 500);
+    return () => {
+      clearTimeout(timer);
+      stopMusicRef.current();
+    };
+  }, []);
+
   const handleUpgradeSelect = (id: string) => {
     const state = gameState.current;
     state.upgradeLevels[id] = (state.upgradeLevels[id] || 0) + 1;
@@ -606,6 +630,12 @@ export default function Game() {
     const isPaused = !gameState.current.isPaused;
     gameState.current.isPaused = isPaused;
     gameState.current.lastTime = 0;
+    playSoundRef.current(isPaused ? 'pause' : 'unpause');
+    if (isPaused) {
+      stopMusicRef.current();
+    } else {
+      startMusicRef.current();
+    }
     setUiState(s => ({ ...s, isPaused }));
   };
 
@@ -692,12 +722,15 @@ export default function Game() {
                     { id: 'speed', label: 'AGILIDAD', icon: '💨', desc: '+10% Velocidad' }
                   ].map(skill => (
                     <button key={skill.id} onClick={() => {
+                      playSoundRef.current('menuSelect');
+                      playSoundRef.current('menuClose');
                       setUiState(s => ({
                         ...s, 
                         showTempSkills: false, isPaused: false, 
                         tempSkills: { ...s.tempSkills, [skill.id]: s.tempSkills[skill.id] + 1 }
                       }));
                       gameState.current.isPaused = false;
+                      startMusicRef.current();
                     }} className="w-full p-4 bg-gray-800 hover:bg-gray-700 border-2 border-white/10 hover:border-blue-400 rounded-lg flex items-center gap-4 transition-all">
                       <span className="text-2xl">{skill.icon}</span>
                       <div className="flex-1 text-left">
