@@ -683,6 +683,11 @@ export default function Game() {
     const state = gameState.current;
     state.analogShoot.x = dx;
     state.analogShoot.y = dy;
+    
+    // Auto-fire only when actively using the joystick
+    if (dx !== 0 || dy !== 0) {
+      state.player.lastMoveAngle = Math.atan2(dy, dx);
+    }
   };
 
   const handleVirtualPad = (dx: number, dy: number) => {

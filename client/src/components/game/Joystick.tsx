@@ -13,22 +13,22 @@ export const Joystick: React.FC<JoystickProps> = ({ onDirectionChange }) => {
 
   const handleMove = (clientX: number, clientY: number, target: HTMLElement) => {
     const rect = target.getBoundingClientRect();
-    const centerX = rect.left + radius;
-    const centerY = rect.top + radius;
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
     
     let dx = clientX - centerX;
     let dy = clientY - centerY;
     
     const distance = Math.sqrt(dx * dx + dy * dy);
-    if (distance > radius) {
-      dx = (dx / distance) * radius;
-      dy = (dy / distance) * radius;
+    const maxRadius = rect.width / 2;
+    if (distance > maxRadius) {
+      dx = (dx / distance) * maxRadius;
+      dy = (dy / distance) * maxRadius;
     }
 
-    const normalizedX = dx / radius;
-    const normalizedY = dy / radius;
+    const normalizedX = dx / maxRadius;
+    const normalizedY = dy / maxRadius;
 
-    // Use raw values for 360 degree movement
     setPosition({ x: dx, y: dy });
     onDirectionChange(normalizedX, normalizedY);
   };
