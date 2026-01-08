@@ -90,6 +90,8 @@ export default function Game() {
     },
 
     keys: { w: false, a: false, s: false, d: false },
+    analogMove: { x: 0, y: 0 },
+    analogShoot: { x: 0, y: 0 },
     bullets: [] as Bullet[],
     enemies: [] as Entity[],
     xpGems: [] as Entity[],
@@ -213,9 +215,9 @@ export default function Game() {
       let dy = 0;
 
       // Check for analog input first (Joystick)
-      if ((state.keys as any).analogX !== undefined) {
-        dx = (state.keys as any).analogX;
-        dy = (state.keys as any).analogY;
+      if (state.analogMove.x !== 0 || state.analogMove.y !== 0) {
+        dx = state.analogMove.x;
+        dy = state.analogMove.y;
       } else {
         // Fallback to keyboard
         if (state.keys.w) dy -= 1;
@@ -248,8 +250,20 @@ export default function Game() {
       // 2. Shooting
       state.shootTimer -= dt;
       if (state.shootTimer <= 0) {
+        let shootAngle = state.player.lastMoveAngle;
+        let isShooting = true;
+
+        if (state.analogShoot.x !== 0 || state.analogShoot.y !== 0) {
+          shootAngle = Math.atan2(state.analogShoot.y, state.analogShoot.x);
+        } else if (dx !== 0 || dy !== 0) {
+          shootAngle = Math.atan2(dy, dx);
+        } else {
+          // If no input and no previous movement, maybe don't shoot?
+          // For now keep auto-firing in last direction
+        }
+
         state.shootTimer = state.player.fireRate;
-        const angle = (dx !== 0 || dy !== 0) ? Math.atan2(dy, dx) : state.player.lastMoveAngle;
+        const angle = shootAngle;
         
         const weaponType = new URLSearchParams(window.location.search).get('weapon') || 'normal';
 
@@ -556,10 +570,10 @@ export default function Game() {
   // --- KEYBOARD CONTROLS ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Clear analog values on keyboard input
-      const k_val = gameState.current.keys;
-      delete (k_val as any).analogX;
-      delete (k_val as any).analogY;
+      // Clear analog move values on keyboard input
+      const state = gameState.current;
+      state.analogMove.x = 0;
+      state.analogMove.y = 0;
 
       if (e.code === 'Space') {
         e.preventDefault();
@@ -653,26 +667,26 @@ export default function Game() {
     setUiState(s => ({ ...s, isPaused: true, showTempSkills: true }));
   };
 
+  const handleMoveJoystick = (dx: number, dy: number) => {
+    const state = gameState.current;
+    state.analogMove.x = dx;
+    state.analogMove.y = dy;
+    
+    // Update binary keys for legacy logic if needed
+    state.keys.w = dy < -0.3;
+    state.keys.s = dy > 0.3;
+    state.keys.a = dx < -0.3;
+    state.keys.d = dx > 0.3;
+  };
+
+  const handleShootJoystick = (dx: number, dy: number) => {
+    const state = gameState.current;
+    state.analogShoot.x = dx;
+    state.analogShoot.y = dy;
+  };
+
   const handleVirtualPad = (dx: number, dy: number) => {
-    const k = gameState.current.keys;
-    // For joystick/dpad, we want to allow smooth movement.
-    // However, the current handleKeyDown/KeyUp system uses binary keys.
-    // We should probably modify the update loop to check for analog values or 
-    // just use a threshold for the keys if we want to keep it simple, 
-    // OR directly set the velocity if we want 360 degree movement.
-    
-    // To fix "character only moves in diagonal", we need to ensure the update loop
-    // uses the analog values from dx/dy instead of just the binary keys.
-    
-    // Let's store the analog values in the keys object
-    (k as any).analogX = dx;
-    (k as any).analogY = dy;
-    
-    // Fallback for binary logic elsewhere
-    k.w = dy < -0.3;
-    k.s = dy > 0.3;
-    k.a = dx < -0.3;
-    k.d = dx > 0.3;
+    handleMoveJoystick(dx, dy);
   };
 
   const handleRevive = () => {
@@ -793,14 +807,20 @@ export default function Game() {
       </div>
 
       {/* MOBILE CONTROLS (Overlay on bottom) */}
-      <div className="absolute bottom-2 left-0 right-0 z-30 md:hidden flex justify-center pointer-events-none">
-        <div className="pointer-events-auto scale-75 origin-bottom">
+      <div className="absolute bottom-4 left-0 right-0 z-30 md:hidden flex justify-between px-8 pointer-events-none">
+        <div className="pointer-events-auto scale-75 origin-bottom-left">
           {uiState.controlType === 'dpad' ? (
-            <DPad onDirectionChange={handleVirtualPad} />
+            <DPad onDirectionChange={handleMoveJoystick} />
           ) : (
-            <Joystick onDirectionChange={handleVirtualPad} />
+            <Joystick onDirectionChange={handleMoveJoystick} />
           )}
         </div>
+        
+        {uiState.controlType === 'joystick' && (
+          <div className="pointer-events-auto scale-75 origin-bottom-right">
+            <Joystick onDirectionChange={handleShootJoystick} />
+          </div>
+        )}
       </div>
 
       {/* MENUS */}
