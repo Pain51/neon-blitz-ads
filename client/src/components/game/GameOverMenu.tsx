@@ -4,10 +4,19 @@ import { GameButton } from '../ui/GameButton';
 import { useCreateScore } from '@/hooks/use-scores';
 import { Loader2, Trophy } from 'lucide-react';
 
+interface GameStats {
+  enemiesKilled: number;
+  bossesKilled: number;
+  powerupsCollected: number;
+  damageTakenThisLevel: number;
+}
+
 interface GameOverMenuProps {
   score: number;
   level: number;
   revivesLeft: number;
+  coins: number;
+  stats?: GameStats;
   onRevive: () => void;
   onRestart: () => void;
 }
@@ -15,7 +24,9 @@ interface GameOverMenuProps {
 export const GameOverMenu: React.FC<GameOverMenuProps> = ({ 
   score, 
   level, 
-  revivesLeft, 
+  revivesLeft,
+  coins,
+  stats,
   onRevive, 
   onRestart 
 }) => {
@@ -49,6 +60,27 @@ export const GameOverMenu: React.FC<GameOverMenuProps> = ({
             <p className="text-muted-foreground uppercase text-xs font-bold tracking-widest mb-1">Nivel Alcanzado</p>
             <p className="text-xl font-mono text-secondary">{level}</p>
           </div>
+
+          {stats && (
+            <div className="grid grid-cols-2 gap-2 mb-6 text-xs">
+              <div className="bg-black/50 rounded p-2">
+                <p className="text-gray-500 uppercase text-[10px]">Enemigos</p>
+                <p className="text-white font-mono">{stats.enemiesKilled}</p>
+              </div>
+              <div className="bg-black/50 rounded p-2">
+                <p className="text-gray-500 uppercase text-[10px]">Jefes</p>
+                <p className="text-white font-mono">{stats.bossesKilled}</p>
+              </div>
+              <div className="bg-black/50 rounded p-2">
+                <p className="text-gray-500 uppercase text-[10px]">Power-ups</p>
+                <p className="text-white font-mono">{stats.powerupsCollected}</p>
+              </div>
+              <div className="bg-black/50 rounded p-2">
+                <p className="text-gray-500 uppercase text-[10px]">Monedas</p>
+                <p className="text-yellow-500 font-mono">{coins}</p>
+              </div>
+            </div>
+          )}
 
           {!submitted ? (
             <div className="flex gap-2">

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pause, Star, Trophy, Volume2, VolumeX, X } from 'lucide-react';
+import { Pause, Star, Trophy, Volume2, VolumeX, X, Move } from 'lucide-react';
 import { Joystick } from '@/components/game/Joystick';
 import { GameOverMenu } from '@/components/game/GameOverMenu';
 import { useGameAudio } from '@/hooks/useGameAudio';
@@ -36,9 +36,11 @@ interface Entity {
   color: string;
   hp: number;
   maxHp: number;
-  type?: 'normal' | 'special' | 'boss';
+  type?: 'normal' | 'special' | 'boss' | 'fast' | 'tank' | 'zigzag' | 'shooter';
   xpValue?: number;
   id: number;
+  zigzagTimer?: number;
+  shootTimer?: number;
 }
 
 interface Bullet extends Entity {
@@ -54,6 +56,40 @@ interface Particle {
   color: string;
   size: number;
 }
+
+interface PowerUp {
+  x: number;
+  y: number;
+  radius: number;
+  type: 'shield' | 'speed' | 'rapidFire' | 'magnet' | 'bomb';
+  color: string;
+  duration: number;
+  id: number;
+}
+
+interface ActiveEffect {
+  type: 'shield' | 'speed' | 'rapidFire' | 'magnet';
+  endTime: number;
+}
+
+interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlocked: boolean;
+}
+
+const ACHIEVEMENTS: Achievement[] = [
+  { id: 'first_blood', name: 'First Blood', description: 'Defeat your first enemy', icon: '1', unlocked: false },
+  { id: 'survivor_5', name: 'Survivor', description: 'Reach level 5', icon: '5', unlocked: false },
+  { id: 'survivor_10', name: 'Elite Survivor', description: 'Reach level 10', icon: '10', unlocked: false },
+  { id: 'boss_slayer', name: 'Boss Slayer', description: 'Defeat a boss', icon: 'B', unlocked: false },
+  { id: 'score_1k', name: 'Point Hunter', description: 'Score 1,000 points', icon: '1K', unlocked: false },
+  { id: 'score_10k', name: 'Score Master', description: 'Score 10,000 points', icon: '10K', unlocked: false },
+  { id: 'powerup_5', name: 'Power Collector', description: 'Collect 5 power-ups in one game', icon: 'P', unlocked: false },
+  { id: 'no_damage', name: 'Untouchable', description: 'Complete a level without taking damage', icon: 'U', unlocked: false },
+];
 
 export default function Game() {
   const [, setLocation] = useLocation();
@@ -103,6 +139,10 @@ export default function Game() {
     enemies: [] as Entity[],
     xpGems: [] as Entity[],
     particles: [] as Particle[],
+    powerups: [] as PowerUp[],
+    activeEffects: [] as ActiveEffect[],
+    powerupSpawnTimer: 0,
+    powerupIdCounter: 0,
     coins: 0,
     upgradeLevels: {
       fireRate: 0,
@@ -112,6 +152,12 @@ export default function Game() {
       pierce: 0,
       regen: 0,
     } as Record<string, number>,
+    stats: {
+      enemiesKilled: 0,
+      bossesKilled: 0,
+      powerupsCollected: 0,
+      damageTakenThisLevel: 0,
+    },
   });
 
   const { playSound, setEnabled: setAudioEnabled, startMusic, stopMusic } = useGameAudio();
@@ -123,6 +169,17 @@ export default function Game() {
   stopMusicRef.current = stopMusic;
   
   const [audioEnabled, setAudioEnabledState] = useState(true);
+  
+  const [joystickPositions, setJoystickPositions] = useState(() => {
+    const saved = localStorage.getItem('joystickPositions');
+    if (saved) return JSON.parse(saved);
+    return {
+      move: { x: 24, y: 24 },
+      shoot: { x: -24, y: 24 }
+    };
+  });
+  const [editingJoysticks, setEditingJoysticks] = useState(false);
+  const [draggingJoystick, setDraggingJoystick] = useState<'move' | 'shoot' | null>(null);
   
   const [uiState, setUiState] = useState({
     score: 0,
@@ -145,7 +202,30 @@ export default function Game() {
       crit: 0,
       speed: 0,
     } as Record<string, number>,
+    stats: {
+      enemiesKilled: 0,
+      bossesKilled: 0,
+      powerupsCollected: 0,
+      damageTakenThisLevel: 0,
+    },
   });
+  
+  const [achievementNotification, setAchievementNotification] = useState<Achievement | null>(null);
+  
+  const unlockAchievement = (id: string) => {
+    const saved = JSON.parse(localStorage.getItem('achievements') || '{}');
+    if (saved[id]) return; // Already unlocked
+    
+    saved[id] = true;
+    localStorage.setItem('achievements', JSON.stringify(saved));
+    
+    const achievement = ACHIEVEMENTS.find(a => a.id === id);
+    if (achievement) {
+      playSoundRef.current('levelUp');
+      setAchievementNotification(achievement);
+      setTimeout(() => setAchievementNotification(null), 3000);
+    }
+  };
   
   const toggleAudio = () => {
     const newValue = !audioEnabled;
@@ -191,27 +271,52 @@ export default function Game() {
       if (difficulty === 'extreme') statMult = 1.15 * 1.5 * 3.0;
 
       const isBoss = state.level % 5 === 0 && state.enemies.filter(e => e.type === 'boss').length === 0;
-      const isSpecial = state.level % 2 === 0 && !isBoss && Math.random() < 0.3;
       
-      let type: 'normal' | 'special' | 'boss' = 'normal';
+      let type: 'normal' | 'special' | 'boss' | 'fast' | 'tank' | 'zigzag' | 'shooter' = 'normal';
       let radius = ENEMY_SIZE_NORMAL / 2;
       let hp = 4;
-      let speed = (100 + (state.level * 2)) * (1 + (statMult - 1) * 0.2);
       let color = COLOR_ENEMY;
       let xpValue = 10;
+      let zigzagTimer = 0;
+      let shootTimer = 0;
 
       if (isBoss) {
         type = 'boss';
         radius = ENEMY_SIZE_BOSS / 2;
         hp = 40;
-        speed = 50;
         color = COLOR_BOSS;
         xpValue = 500;
-      } else if (isSpecial) {
-        type = 'special';
-        color = COLOR_SPECIAL;
-        hp = 8;
-        xpValue = 50;
+      } else {
+        const roll = Math.random();
+        if (state.level >= 3 && roll < 0.15) {
+          type = 'fast';
+          color = '#22d3ee'; // Cyan
+          hp = 2;
+          xpValue = 15;
+        } else if (state.level >= 4 && roll < 0.25) {
+          type = 'tank';
+          color = '#78716c'; // Gray
+          radius = ENEMY_SIZE_NORMAL * 0.75;
+          hp = 15;
+          xpValue = 30;
+        } else if (state.level >= 5 && roll < 0.35) {
+          type = 'zigzag';
+          color = '#f97316'; // Orange
+          hp = 5;
+          xpValue = 20;
+          zigzagTimer = Math.random() * 2;
+        } else if (state.level >= 6 && roll < 0.42) {
+          type = 'shooter';
+          color = '#dc2626'; // Bright red
+          hp = 6;
+          xpValue = 35;
+          shootTimer = 2;
+        } else if (state.level % 2 === 0 && roll < 0.55) {
+          type = 'special';
+          color = COLOR_SPECIAL;
+          hp = 8;
+          xpValue = 50;
+        }
       }
       
       hp *= statMult;
@@ -228,20 +333,38 @@ export default function Game() {
       state.enemies.push({
         id: Math.random(),
         x, y, vx: 0, vy: 0,
-        radius, hp, maxHp: hp, color, type, xpValue
+        radius, hp, maxHp: hp, color, type, xpValue,
+        zigzagTimer, shootTimer
       });
     };
 
-    const createExplosion = (x: number, y: number, color: string, count: number) => {
+    const createExplosion = (x: number, y: number, color: string, count: number, intensity: number = 1) => {
       for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 100 + Math.random() * 150 * intensity;
         gameState.current.particles.push({
           x, y,
-          vx: (Math.random() - 0.5) * 200,
-          vy: (Math.random() - 0.5) * 200,
-          life: 0.5 + Math.random() * 0.5,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 0.3 + Math.random() * 0.5 * intensity,
           color,
-          size: Math.random() * 3 + 1
+          size: (Math.random() * 3 + 2) * intensity
         });
+      }
+      // Add sparks for more dramatic effect
+      if (intensity > 1) {
+        for (let i = 0; i < count / 2; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 150 + Math.random() * 200;
+          gameState.current.particles.push({
+            x, y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 0.2 + Math.random() * 0.3,
+            color: '#fff',
+            size: 1 + Math.random() * 2
+          });
+        }
       }
     };
 
@@ -267,8 +390,12 @@ export default function Game() {
         const moveX = dx / (len > 1 ? len : 1);
         const moveY = dy / (len > 1 ? len : 1);
         
-        state.player.x += moveX * state.player.speed * dt;
-        state.player.y += moveY * state.player.speed * dt;
+        const hasSpeedBoost = state.activeEffects.some(e => e.type === 'speed');
+        const speedMult = hasSpeedBoost ? 1.5 : 1;
+        const finalSpeed = state.player.speed * speedMult * (1 + uiState.tempSkills.speed * 0.1);
+        
+        state.player.x += moveX * finalSpeed * dt;
+        state.player.y += moveY * finalSpeed * dt;
         state.player.lastMoveAngle = Math.atan2(moveY, moveX);
       }
 
@@ -292,7 +419,8 @@ export default function Game() {
           state.player.lastShootAngle = shootAngle;
         }
 
-        state.shootTimer = state.player.fireRate;
+        const hasRapidFire = state.activeEffects.some(e => e.type === 'rapidFire');
+        state.shootTimer = state.player.fireRate * (hasRapidFire ? 0.3 : 1);
         const angle = shootAngle;
         const weaponType = new URLSearchParams(window.location.search).get('weapon') || 'normal';
 
@@ -342,6 +470,31 @@ export default function Game() {
         b.y += b.vy * dt;
         if (b.x < 0 || b.x > CANVAS_WIDTH || b.y < 0 || b.y > CANVAS_HEIGHT) {
           state.bullets.splice(i, 1);
+          continue;
+        }
+        
+        // Enemy bullets (negative pierce) damage player
+        if (b.pierce < 0) {
+          const dx = state.player.x - b.x;
+          const dy = state.player.y - b.y;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          if (dist < state.player.radius + b.radius) {
+            state.bullets.splice(i, 1);
+            const hasShield = state.activeEffects.some(ef => ef.type === 'shield');
+            if (!hasShield) {
+              state.player.hp -= 15;
+              state.stats.damageTakenThisLevel += 15;
+              playSoundRef.current('damage');
+              if (state.player.hp <= 0) {
+                state.player.hp = 0;
+                state.isGameOver = true;
+                playSoundRef.current('gameOver');
+                setUiState(s => ({ ...s, isGameOver: true }));
+              }
+              setUiState(s => ({ ...s, hp: state.player.hp }));
+            }
+            createExplosion(b.x, b.y, hasShield ? '#3b82f6' : '#ff0000', 5);
+          }
         }
       }
 
@@ -358,27 +511,95 @@ export default function Game() {
         const dy = state.player.y - e.y;
         const dist = Math.sqrt(dx*dx + dy*dy);
         
-        const speed = e.type === 'boss' ? 30 : 60 + (state.level * 2);
-        e.x += (dx / dist) * speed * dt;
-        e.y += (dy / dist) * speed * dt;
+        // Different speed and movement patterns per enemy type
+        let speed = 60 + (state.level * 2);
+        let moveX = dx / dist;
+        let moveY = dy / dist;
+        
+        switch(e.type) {
+          case 'boss':
+            speed = 30;
+            // Boss fires in a circle pattern
+            e.shootTimer = (e.shootTimer || 3) - dt;
+            if (e.shootTimer <= 0) {
+              e.shootTimer = 2;
+              const bulletCount = 8;
+              for (let i = 0; i < bulletCount; i++) {
+                const angle = (i / bulletCount) * Math.PI * 2;
+                state.bullets.push({
+                  id: Math.random(),
+                  x: e.x, y: e.y,
+                  vx: Math.cos(angle) * 120,
+                  vy: Math.sin(angle) * 120,
+                  radius: 6,
+                  color: '#ff4444',
+                  hp: 1, maxHp: 1, pierce: -99
+                });
+              }
+            }
+            break;
+          case 'fast':
+            speed = 150 + (state.level * 3);
+            break;
+          case 'tank':
+            speed = 35;
+            break;
+          case 'zigzag':
+            speed = 80;
+            e.zigzagTimer = (e.zigzagTimer || 0) + dt;
+            const zigzagOffset = Math.sin(e.zigzagTimer * 8) * 0.8;
+            const perpX = -moveY;
+            const perpY = moveX;
+            moveX += perpX * zigzagOffset;
+            moveY += perpY * zigzagOffset;
+            break;
+          case 'shooter':
+            speed = 40;
+            e.shootTimer = (e.shootTimer || 2) - dt;
+            if (e.shootTimer <= 0 && dist < 400) {
+              e.shootTimer = 2.5;
+              // Spawn enemy bullet (using bullets array with different color)
+              state.bullets.push({
+                id: Math.random(),
+                x: e.x, y: e.y,
+                vx: (dx / dist) * 150,
+                vy: (dy / dist) * 150,
+                radius: 5,
+                color: '#ff0000',
+                hp: 1, maxHp: 1, pierce: -99 // Negative pierce = enemy bullet
+              });
+            }
+            break;
+        }
+        
+        e.x += moveX * speed * dt;
+        e.y += moveY * speed * dt;
 
         if (dist < e.radius + state.player.radius) {
-          state.player.hp -= (e.type === 'boss' ? 30 : 10);
-          createExplosion(state.player.x, state.player.y, COLOR_PLAYER, 10);
-          state.enemies.splice(i, 1);
-          playSoundRef.current('damage');
-          if (state.player.hp <= 0) {
-            state.player.hp = 0;
-            state.isGameOver = true;
-            playSoundRef.current('gameOver');
-            setUiState(s => ({ ...s, isGameOver: true }));
+          const hasShield = state.activeEffects.some(ef => ef.type === 'shield');
+          if (!hasShield) {
+            const dmg = e.type === 'boss' ? 30 : 10;
+            state.player.hp -= dmg;
+            state.stats.damageTakenThisLevel += dmg;
+            playSoundRef.current('damage');
+            if (state.player.hp <= 0) {
+              state.player.hp = 0;
+              state.isGameOver = true;
+              playSoundRef.current('gameOver');
+              setUiState(s => ({ ...s, isGameOver: true }));
+            }
+            setUiState(s => ({ ...s, hp: state.player.hp }));
           }
-          setUiState(s => ({ ...s, hp: state.player.hp }));
+          createExplosion(state.player.x, state.player.y, hasShield ? '#3b82f6' : COLOR_PLAYER, 10);
+          state.enemies.splice(i, 1);
           continue;
         }
 
         for (let j = state.bullets.length - 1; j >= 0; j--) {
           const b = state.bullets[j];
+          // Skip enemy bullets (negative pierce) - they don't damage enemies
+          if (b.pierce < 0) continue;
+          
           const dbx = e.x - b.x;
           const dby = e.y - b.y;
           if (Math.sqrt(dbx*dbx + dby*dby) < e.radius + b.radius) {
@@ -397,9 +618,17 @@ export default function Game() {
             createExplosion(b.x, b.y, COLOR_BULLET, 3);
             if (b.pierce <= 0) state.bullets.splice(j, 1);
             if (e.hp <= 0) {
+              const wasBoss = e.type === 'boss';
               state.enemies.splice(i, 1);
               state.score += e.xpValue! * 10;
+              state.stats.enemiesKilled++;
+              if (wasBoss) state.stats.bossesKilled++;
+              
               playSoundRef.current('explosion');
+              // Create dramatic explosion based on enemy type
+              const explosionIntensity = wasBoss ? 3 : (e.type === 'special' ? 1.5 : 1);
+              createExplosion(e.x, e.y, e.color, wasBoss ? 30 : 12, explosionIntensity);
+              
               state.xpGems.push({
                 id: Math.random(),
                 x: e.x, y: e.y, vx:0, vy:0,
@@ -407,7 +636,18 @@ export default function Game() {
                 color: COLOR_XP,
                 hp: 1, maxHp: 1, xpValue: e.xpValue
               });
-              setUiState(s => ({ ...s, score: state.score }));
+              
+              // Achievement checks
+              if (state.stats.enemiesKilled === 1) unlockAchievement('first_blood');
+              if (wasBoss) unlockAchievement('boss_slayer');
+              if (state.score >= 1000) unlockAchievement('score_1k');
+              if (state.score >= 10000) unlockAchievement('score_10k');
+              
+              setUiState(s => ({ 
+                ...s, 
+                score: state.score,
+                stats: { ...state.stats }
+              }));
               break;
             }
           }
@@ -432,6 +672,12 @@ export default function Game() {
           state.xpGems.splice(i, 1);
           playSoundRef.current('gem');
           if (state.xp >= state.xpToNextLevel) {
+            // Check untouchable achievement before level up
+            if (state.stats.damageTakenThisLevel === 0) {
+              unlockAchievement('no_damage');
+            }
+            state.stats.damageTakenThisLevel = 0; // Reset for next level
+            
             state.level++;
             state.xp -= state.xpToNextLevel;
             state.xpToNextLevel = Math.floor(state.xpToNextLevel * 1.5);
@@ -439,6 +685,11 @@ export default function Game() {
             playSoundRef.current('levelUp');
             stopMusicRef.current();
             setTimeout(() => playSoundRef.current('menuOpen'), 400);
+            
+            // Level achievements
+            if (state.level >= 5) unlockAchievement('survivor_5');
+            if (state.level >= 10) unlockAchievement('survivor_10');
+            
             setUiState(s => ({
               ...s,
               level: state.level,
@@ -448,7 +699,8 @@ export default function Game() {
               isPaused: true,
               coins: state.coins,
               skillPoints: s.skillPoints + 1,
-              upgradeLevels: { ...state.upgradeLevels }
+              upgradeLevels: { ...state.upgradeLevels },
+              stats: { ...state.stats, damageTakenThisLevel: 0 }
             }));
           } else {
             setUiState(s => ({ ...s, xp: state.xp, xpToNextLevel: state.xpToNextLevel, coins: state.coins }));
@@ -462,6 +714,85 @@ export default function Game() {
         p.x += p.vx * dt;
         p.y += p.vy * dt;
         if (p.life <= 0) state.particles.splice(i, 1);
+      }
+
+      // Power-up spawn logic
+      state.powerupSpawnTimer += dt * 1000;
+      if (state.powerupSpawnTimer >= 15000 && state.powerups.length < 3) {
+        state.powerupSpawnTimer = 0;
+        const types: Array<'shield' | 'speed' | 'rapidFire' | 'magnet' | 'bomb'> = ['shield', 'speed', 'rapidFire', 'magnet', 'bomb'];
+        const colors: Record<string, string> = { shield: '#3b82f6', speed: '#22c55e', rapidFire: '#f59e0b', magnet: '#a855f7', bomb: '#ef4444' };
+        const type = types[Math.floor(Math.random() * types.length)];
+        state.powerups.push({
+          x: 100 + Math.random() * (CANVAS_WIDTH - 200),
+          y: 100 + Math.random() * (CANVAS_HEIGHT - 200),
+          radius: 15,
+          type,
+          color: colors[type],
+          duration: 8000,
+          id: state.powerupIdCounter++
+        });
+      }
+
+      // Power-up collision
+      for (let i = state.powerups.length - 1; i >= 0; i--) {
+        const pu = state.powerups[i];
+        const dx = state.player.x - pu.x;
+        const dy = state.player.y - pu.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < state.player.radius + pu.radius) {
+          state.powerups.splice(i, 1);
+          playSoundRef.current('gem');
+          state.stats.powerupsCollected++;
+          
+          // Achievement check
+          if (state.stats.powerupsCollected >= 5) unlockAchievement('powerup_5');
+          
+          if (pu.type === 'bomb') {
+            // Kill all enemies on screen
+            state.enemies.forEach(e => {
+              state.score += e.type === 'boss' ? 500 : (e.type === 'special' ? 100 : 50);
+              for (let j = 0; j < 8; j++) {
+                state.particles.push({
+                  x: e.x, y: e.y,
+                  vx: (Math.random() - 0.5) * 300,
+                  vy: (Math.random() - 0.5) * 300,
+                  life: 0.5,
+                  color: '#ef4444',
+                  size: 4
+                });
+              }
+            });
+            state.enemies = [];
+            playSoundRef.current('explosion');
+          } else {
+            // Add timed effect
+            const existingIdx = state.activeEffects.findIndex(e => e.type === pu.type);
+            if (existingIdx >= 0) {
+              state.activeEffects[existingIdx].endTime = Date.now() + pu.duration;
+            } else {
+              state.activeEffects.push({ type: pu.type as any, endTime: Date.now() + pu.duration });
+            }
+          }
+        }
+      }
+
+      // Update active effects
+      const now = Date.now();
+      state.activeEffects = state.activeEffects.filter(e => e.endTime > now);
+      
+      // Apply magnet effect
+      const hasMagnet = state.activeEffects.some(e => e.type === 'magnet');
+      if (hasMagnet) {
+        state.xpGems.forEach(g => {
+          const dx = state.player.x - g.x;
+          const dy = state.player.y - g.y;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          if (dist > 0) {
+            g.x += (dx / dist) * 500 * dt;
+            g.y += (dy / dist) * 500 * dt;
+          }
+        });
       }
     };
 
@@ -479,21 +810,57 @@ export default function Game() {
       const playerColor = skinColors[skinId] || COLOR_PLAYER;
       const playerShape = skinShapes[skinId] || 'triangle';
       
-      ctx.fillStyle = '#0a0a0a';
+      // Draw neon grid background
+      ctx.fillStyle = '#050508';
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-      ctx.lineWidth = 1;
+      
       const gridSize = 50;
-      for(let x=0; x<CANVAS_WIDTH; x+=gridSize) {
+      const time = Date.now() * 0.001;
+      
+      // Animated grid with neon glow
+      for(let x = 0; x <= CANVAS_WIDTH; x += gridSize) {
+        const intensity = 0.08 + 0.02 * Math.sin(time + x * 0.1);
+        ctx.strokeStyle = `rgba(59, 130, 246, ${intensity})`;
+        ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CANVAS_HEIGHT); ctx.stroke();
       }
-      for(let y=0; y<CANVAS_HEIGHT; y+=gridSize) {
+      for(let y = 0; y <= CANVAS_HEIGHT; y += gridSize) {
+        const intensity = 0.08 + 0.02 * Math.sin(time + y * 0.1);
+        ctx.strokeStyle = `rgba(139, 92, 246, ${intensity})`;
+        ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CANVAS_WIDTH, y); ctx.stroke();
       }
+      
+      // Vignette effect
+      const vignette = ctx.createRadialGradient(CANVAS_WIDTH/2, CANVAS_HEIGHT/2, 100, CANVAS_WIDTH/2, CANVAS_HEIGHT/2, CANVAS_WIDTH * 0.7);
+      vignette.addColorStop(0, 'rgba(0,0,0,0)');
+      vignette.addColorStop(1, 'rgba(0,0,0,0.4)');
+      ctx.fillStyle = vignette;
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
       state.xpGems.forEach(g => {
         ctx.fillStyle = g.color; ctx.beginPath(); ctx.arc(g.x, g.y, g.radius, 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 5; ctx.shadowColor = g.color; ctx.fill(); ctx.shadowBlur = 0;
+      });
+
+      // Draw power-ups
+      state.powerups.forEach(pu => {
+        ctx.fillStyle = pu.color;
+        ctx.beginPath();
+        ctx.arc(pu.x, pu.y, pu.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = pu.color;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        
+        // Draw icon based on type
+        ctx.fillStyle = '#fff';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const icons: Record<string, string> = { shield: 'S', speed: 'V', rapidFire: 'R', magnet: 'M', bomb: 'B' };
+        ctx.fillText(icons[pu.type] || '?', pu.x, pu.y);
       });
 
       state.bullets.forEach(b => {
@@ -534,6 +901,20 @@ export default function Game() {
       }
       ctx.fill();
       ctx.shadowColor = playerColor; ctx.shadowBlur = 15; ctx.fill(); ctx.shadowBlur = 0;
+
+      // Draw shield effect if active
+      const hasShieldEffect = state.activeEffects.some(e => e.type === 'shield');
+      if (hasShieldEffect) {
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(state.player.x, state.player.y, state.player.radius + 10, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowColor = '#3b82f6';
+        ctx.shadowBlur = 10;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
 
       state.particles.forEach(p => {
         ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
@@ -662,6 +1043,51 @@ export default function Game() {
     }
   };
 
+  const handleJoystickDragStart = (joystick: 'move' | 'shoot') => {
+    if (!editingJoysticks) return;
+    setDraggingJoystick(joystick);
+    gameState.current.isPaused = true;
+  };
+
+  const handleJoystickDrag = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!draggingJoystick || !editingJoysticks) return;
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const mainEl = (e.currentTarget as HTMLElement).closest('main');
+    if (!mainEl) return;
+    const rect = mainEl.getBoundingClientRect();
+    
+    if (draggingJoystick === 'move') {
+      const x = Math.max(60, Math.min(clientX - rect.left, rect.width / 2 - 60));
+      const y = Math.max(60, Math.min(rect.height - (clientY - rect.top), rect.height - 60));
+      setJoystickPositions((prev: typeof joystickPositions) => ({ ...prev, move: { x, y } }));
+    } else {
+      const x = Math.max(60, Math.min(rect.right - clientX, rect.width / 2 - 60));
+      const y = Math.max(60, Math.min(rect.height - (clientY - rect.top), rect.height - 60));
+      setJoystickPositions((prev: typeof joystickPositions) => ({ ...prev, shoot: { x, y } }));
+    }
+  };
+
+  const handleJoystickDragEnd = () => {
+    if (draggingJoystick) {
+      localStorage.setItem('joystickPositions', JSON.stringify(joystickPositions));
+      setDraggingJoystick(null);
+      gameState.current.isPaused = false;
+    }
+  };
+
+  const toggleEditJoysticks = () => {
+    const newState = !editingJoysticks;
+    setEditingJoysticks(newState);
+    if (newState) {
+      gameState.current.isPaused = true;
+      setUiState(s => ({ ...s, isPaused: true }));
+    } else {
+      gameState.current.isPaused = false;
+      setUiState(s => ({ ...s, isPaused: false }));
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen bg-[#0a0a0a] text-white overflow-hidden font-press-start select-none">
       <header className="flex justify-between items-center p-2 md:p-4 border-b border-white/10 bg-black/50 backdrop-blur-md">
@@ -700,14 +1126,48 @@ export default function Game() {
           <button onClick={handlePauseToggle} className="p-1 md:p-2 hover:bg-white/10 rounded-lg transition-colors border border-white/10">
             <Pause className="w-4 h-4 md:w-6 md:h-6" />
           </button>
+          <button onClick={toggleEditJoysticks} className={`p-1 md:p-2 rounded-lg transition-colors border ${editingJoysticks ? 'bg-green-600 border-green-400' : 'hover:bg-white/10 border-white/10'}`}>
+            <Move className="w-4 h-4 md:w-6 md:h-6" />
+          </button>
         </div>
       </header>
 
-      <main className="flex-1 relative flex items-center justify-center overflow-hidden">
+      <main 
+        className="flex-1 relative flex items-center justify-center overflow-hidden"
+        onTouchMove={handleJoystickDrag}
+        onMouseMove={handleJoystickDrag}
+        onTouchEnd={handleJoystickDragEnd}
+        onMouseUp={handleJoystickDragEnd}
+        onMouseLeave={handleJoystickDragEnd}
+      >
         <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} className="max-w-full max-h-full border-2 border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.5)]" />
         
-        <div className="absolute bottom-6 left-6 transform scale-[0.6] md:scale-100 origin-bottom-left z-30"> <Joystick size={120} onMove={handleMoveJoystick} label="MOVER" /> </div>
-        <div className="absolute bottom-6 right-2 transform scale-[0.6] md:scale-100 origin-bottom-right z-30"> <Joystick size={120} onMove={handleShootJoystick} label="DISPARAR" /> </div>
+        {editingJoysticks && (
+          <div className="absolute inset-0 bg-black/50 z-20 flex items-center justify-center">
+            <div className="text-center p-4 bg-gray-900/90 rounded-xl border border-green-500">
+              <p className="text-sm text-green-400 mb-2">MODO EDICION</p>
+              <p className="text-[10px] text-gray-400">Arrastra los joysticks a donde quieras</p>
+              <button onClick={toggleEditJoysticks} className="mt-4 px-4 py-2 bg-green-600 hover:bg-green-500 rounded text-xs">LISTO</button>
+            </div>
+          </div>
+        )}
+        
+        <div 
+          className={`absolute transform scale-[0.6] md:scale-100 origin-bottom-left z-30 ${editingJoysticks ? 'cursor-move ring-2 ring-green-500 rounded-full' : ''}`}
+          style={{ left: joystickPositions.move.x, bottom: joystickPositions.move.y }}
+          onTouchStart={() => handleJoystickDragStart('move')}
+          onMouseDown={() => handleJoystickDragStart('move')}
+        > 
+          <Joystick size={120} onMove={editingJoysticks ? () => {} : handleMoveJoystick} label="MOVER" /> 
+        </div>
+        <div 
+          className={`absolute transform scale-[0.6] md:scale-100 origin-bottom-right z-30 ${editingJoysticks ? 'cursor-move ring-2 ring-green-500 rounded-full' : ''}`}
+          style={{ right: joystickPositions.shoot.x, bottom: joystickPositions.shoot.y }}
+          onTouchStart={() => handleJoystickDragStart('shoot')}
+          onMouseDown={() => handleJoystickDragStart('shoot')}
+        > 
+          <Joystick size={120} onMove={editingJoysticks ? () => {} : handleShootJoystick} label="DISPARAR" /> 
+        </div>
 
         <AnimatePresence>
           {uiState.showTempSkills && (
@@ -758,7 +1218,24 @@ export default function Game() {
             </motion.div>
           )}
           {uiState.isGameOver && (
-            <GameOverMenu score={uiState.score} level={uiState.level} revivesLeft={uiState.revivesLeft} onRevive={handleRevive} onRestart={() => window.location.reload()} />
+            <GameOverMenu score={uiState.score} level={uiState.level} revivesLeft={uiState.revivesLeft} coins={uiState.coins} stats={uiState.stats} onRevive={handleRevive} onRestart={() => window.location.reload()} />
+          )}
+          {achievementNotification && (
+            <motion.div 
+              initial={{ opacity: 0, y: -50 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              exit={{ opacity: 0, y: -50 }} 
+              className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-gradient-to-r from-yellow-900/90 via-yellow-800/90 to-yellow-900/90 border-2 border-yellow-500 rounded-xl px-6 py-3 flex items-center gap-4 shadow-[0_0_30px_rgba(234,179,8,0.5)]"
+            >
+              <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-black font-bold text-sm shadow-[0_0_10px_#eab308]">
+                <Trophy className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-yellow-400 text-xs uppercase tracking-wider">Logro Desbloqueado</div>
+                <div className="text-white font-bold">{achievementNotification.name}</div>
+                <div className="text-gray-400 text-[10px]">{achievementNotification.description}</div>
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
       </main>
