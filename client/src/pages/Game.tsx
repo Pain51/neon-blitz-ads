@@ -4,8 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Pause, Star, X, Gamepad2, Trophy } from 'lucide-react';
 import { DPad } from '@/components/game/DPad';
 import { Joystick } from '@/components/game/Joystick';
-// import { UpgradeMenu } from '@/components/game/UpgradeMenu'; // Removed
 import { GameOverMenu } from '@/components/game/GameOverMenu';
+
+import enemyNormalImg from '@assets/generated_images/neon_red_pixel-art_enemy_drone.png';
+import enemySpecialImg from '@assets/generated_images/neon_purple_pixel-art_special_enemy.png';
+import enemyBossImg from '@assets/generated_images/neon_dark-red_pixel-art_boss_tank.png';
 
 // --- GAME CONSTANTS ---
 const CANVAS_WIDTH = 800;
@@ -56,7 +59,11 @@ export default function Game() {
   const [, setLocation] = useLocation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
-  // Game State Refs (Mutable for game loop performance)
+  const enemyNormalImgRef = useRef<HTMLImageElement | null>(null);
+  const enemySpecialImgRef = useRef<HTMLImageElement | null>(null);
+  const enemyBossImgRef = useRef<HTMLImageElement | null>(null);
+
+  // Game State Refs
   const gameState = useRef({
     score: 0,
     level: 1,
@@ -66,11 +73,10 @@ export default function Game() {
     isGameOver: false,
     lastTime: 0,
     spawnTimer: 0,
-    spawnInterval: 1000, // ms
+    spawnInterval: 1000,
     shootTimer: 0,
     revivesLeft: 3,
     
-    // Player Stats
     player: {
       x: CANVAS_WIDTH / 2,
       y: CANVAS_HEIGHT / 2,
@@ -79,15 +85,15 @@ export default function Game() {
       hp: 100,
       maxHp: 100,
       radius: PLAYER_SIZE / 2,
-      speed: 200, // px per second
-      fireRate: 0.3, // seconds between shots
+      speed: 200,
+      fireRate: 0.3,
       bulletSpeed: 400,
       bulletSize: BULLET_SIZE_BASE,
       pierce: 1,
-      angle: 0, // shooting angle
-      lastMoveAngle: 0, // direction for movement sprite
-      lastShootAngle: 0, // direction for shooting sprite
-      regen: 0.5, // HP per second
+      angle: 0,
+      lastMoveAngle: 0,
+      lastShootAngle: 0,
+      regen: 0.5,
     },
 
     keys: { w: false, a: false, s: false, d: false },
@@ -108,7 +114,6 @@ export default function Game() {
     } as Record<string, number>,
   });
 
-  // React State for UI updates (keep minimal to avoid re-renders)
   const [uiState, setUiState] = useState({
     score: 0,
     level: 1,
@@ -132,7 +137,20 @@ export default function Game() {
     } as Record<string, number>,
   });
 
-  // --- GAME LOOP ---
+  useEffect(() => {
+    const normal = new Image();
+    normal.src = enemyNormalImg;
+    enemyNormalImgRef.current = normal;
+
+    const special = new Image();
+    special.src = enemySpecialImg;
+    enemySpecialImgRef.current = special;
+
+    const boss = new Image();
+    boss.src = enemyBossImg;
+    enemyBossImgRef.current = boss;
+  }, []);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -156,7 +174,7 @@ export default function Game() {
       
       let type: 'normal' | 'special' | 'boss' = 'normal';
       let radius = ENEMY_SIZE_NORMAL / 2;
-      let hp = 4; // Rojo normal
+      let hp = 4;
       let speed = (100 + (state.level * 2)) * (1 + (statMult - 1) * 0.2);
       let color = COLOR_ENEMY;
       let xpValue = 10;
@@ -164,22 +182,21 @@ export default function Game() {
       if (isBoss) {
         type = 'boss';
         radius = ENEMY_SIZE_BOSS / 2;
-        hp = 40; // Cuadrado grande
+        hp = 40;
         speed = 50;
         color = COLOR_BOSS;
         xpValue = 500;
       } else if (isSpecial) {
         type = 'special';
         color = COLOR_SPECIAL;
-        hp = 8; // Morado
+        hp = 8;
         xpValue = 50;
       }
       
-      hp *= statMult; // Aplicar dificultad sobre la nueva base
+      hp *= statMult;
 
-      // Spawn at edge
       let x, y;
-      const side = Math.floor(Math.random() * 4); // 0:top, 1:right, 2:bottom, 3:left
+      const side = Math.floor(Math.random() * 4);
       switch(side) {
         case 0: x = Math.random() * CANVAS_WIDTH; y = -radius; break;
         case 1: x = CANVAS_WIDTH + radius; y = Math.random() * CANVAS_HEIGHT; break;
@@ -211,16 +228,13 @@ export default function Game() {
       const state = gameState.current;
       if (state.isPaused || state.isGameOver) return;
 
-      // 1. Player Movement
       let dx = 0;
       let dy = 0;
 
-      // Check for analog input first (Joystick)
       if (state.analogMove.x !== 0 || state.analogMove.y !== 0) {
         dx = state.analogMove.x;
         dy = state.analogMove.y;
       } else {
-        // Fallback to keyboard
         if (state.keys.w) dy -= 1;
         if (state.keys.s) dy += 1;
         if (state.keys.a) dx -= 1;
@@ -229,7 +243,6 @@ export default function Game() {
 
       if (dx !== 0 || dy !== 0) {
         const len = Math.sqrt(dx*dx + dy*dy);
-        // Normalize if combined magnitude > 1
         const moveX = dx / (len > 1 ? len : 1);
         const moveY = dy / (len > 1 ? len : 1);
         
@@ -238,17 +251,14 @@ export default function Game() {
         state.player.lastMoveAngle = Math.atan2(moveY, moveX);
       }
 
-      // Passive Regeneration
       if (state.player.hp < state.player.maxHp) {
         state.player.hp = Math.min(state.player.maxHp, state.player.hp + state.player.regen * dt);
         setUiState(s => ({ ...s, hp: state.player.hp }));
       }
       
-      // Bound player
       state.player.x = Math.max(state.player.radius, Math.min(CANVAS_WIDTH - state.player.radius, state.player.x));
       state.player.y = Math.max(state.player.radius, Math.min(CANVAS_HEIGHT - state.player.radius, state.player.y));
 
-      // 2. Shooting
       state.shootTimer -= dt;
       if (state.shootTimer <= 0) {
         let shootAngle = state.player.lastShootAngle || state.player.lastMoveAngle;
@@ -263,7 +273,6 @@ export default function Game() {
 
         state.shootTimer = state.player.fireRate;
         const angle = shootAngle;
-        
         const weaponType = new URLSearchParams(window.location.search).get('weapon') || 'normal';
 
         if (weaponType === 'laser') {
@@ -275,7 +284,7 @@ export default function Game() {
             radius: 2, color: '#00ffff',
             hp: 1, maxHp: 1, pierce: 10
           });
-          state.shootTimer = 0.05; // Fast firing laser
+          state.shootTimer = 0.05;
         } else if (weaponType === 'shotgun') {
           for (let i = -3; i <= 3; i++) {
             const spreadAngle = angle + (i * 0.12);
@@ -303,23 +312,18 @@ export default function Game() {
         }
       }
 
-      // 3. Bullets
       for (let i = state.bullets.length - 1; i >= 0; i--) {
         const b = state.bullets[i];
         b.x += b.vx * dt;
         b.y += b.vy * dt;
-
-        // Remove offscreen
         if (b.x < 0 || b.x > CANVAS_WIDTH || b.y < 0 || b.y > CANVAS_HEIGHT) {
           state.bullets.splice(i, 1);
         }
       }
 
-      // 4. Enemies
       state.spawnTimer -= dt * 1000;
       if (state.spawnTimer <= 0) {
         spawnEnemy();
-        // Decrease spawn interval as game progresses
         const difficultyFactor = Math.max(200, 1000 - (state.level * 50));
         state.spawnTimer = difficultyFactor;
       }
@@ -330,17 +334,14 @@ export default function Game() {
         const dy = state.player.y - e.y;
         const dist = Math.sqrt(dx*dx + dy*dy);
         
-        // Move towards player
         const speed = e.type === 'boss' ? 30 : 60 + (state.level * 2);
         e.x += (dx / dist) * speed * dt;
         e.y += (dy / dist) * speed * dt;
 
-        // Collision with Player
         if (dist < e.radius + state.player.radius) {
           state.player.hp -= (e.type === 'boss' ? 30 : 10);
           createExplosion(state.player.x, state.player.y, COLOR_PLAYER, 10);
-          state.enemies.splice(i, 1); // Enemy dies on impact
-          
+          state.enemies.splice(i, 1);
           if (state.player.hp <= 0) {
             state.player.hp = 0;
             state.isGameOver = true;
@@ -350,14 +351,13 @@ export default function Game() {
           continue;
         }
 
-        // Collision with Bullets
         for (let j = state.bullets.length - 1; j >= 0; j--) {
           const b = state.bullets[j];
           const dbx = e.x - b.x;
           const dby = e.y - b.y;
           if (Math.sqrt(dbx*dbx + dby*dby) < e.radius + b.radius) {
             const weaponType = new URLSearchParams(window.location.search).get('weapon') || 'normal';
-            let baseDamage = 2; // Daño base normal solicitado
+            let baseDamage = 2;
             if (weaponType === 'laser') baseDamage = 0.3;
             if (weaponType === 'shotgun') baseDamage = 0.5;
 
@@ -368,16 +368,9 @@ export default function Game() {
             
             e.hp -= isCrit ? finalDamage * 2 : finalDamage;
             b.pierce--;
-            
-            // Effect
             createExplosion(b.x, b.y, COLOR_BULLET, 3);
-
-            if (b.pierce <= 0) {
-              state.bullets.splice(j, 1);
-            }
-
+            if (b.pierce <= 0) state.bullets.splice(j, 1);
             if (e.hp <= 0) {
-              // Enemy Death
               state.enemies.splice(i, 1);
               state.score += e.xpValue! * 10;
               state.xpGems.push({
@@ -388,65 +381,50 @@ export default function Game() {
                 hp: 1, maxHp: 1, xpValue: e.xpValue
               });
               setUiState(s => ({ ...s, score: state.score }));
-              break; // Enemy gone, stop checking bullets
+              break;
             }
           }
         }
       }
 
-      // 5. XP Gems
       for (let i = state.xpGems.length - 1; i >= 0; i--) {
         const g = state.xpGems[i];
         const dx = state.player.x - g.x;
         const dy = state.player.y - g.y;
         const dist = Math.sqrt(dx*dx + dy*dy);
-
-        // Magnet effect when close
         if (dist < 100) {
           g.x += (dx / dist) * 300 * dt;
           g.y += (dy / dist) * 300 * dt;
         }
-
         if (dist < state.player.radius + g.radius) {
           state.xp += g.xpValue!;
           const coinsEarned = Math.floor(g.xpValue! / 2);
           state.coins += coinsEarned;
-          // Update total gold in localStorage
           const currentTotal = parseInt(localStorage.getItem('goldCoins') || '0');
           localStorage.setItem('goldCoins', (currentTotal + coinsEarned).toString());
           state.xpGems.splice(i, 1);
-
-          // Level Up Check
           if (state.xp >= state.xpToNextLevel) {
             state.level++;
             state.xp -= state.xpToNextLevel;
             state.xpToNextLevel = Math.floor(state.xpToNextLevel * 1.5);
             state.isPaused = true;
-            
-            // Gain skill point every level
             setUiState(s => ({
               ...s,
               level: state.level,
               xp: state.xp,
               xpToNextLevel: state.xpToNextLevel,
-              showTempSkills: true, // Show skills menu instead of basic upgrade
+              showTempSkills: true,
               isPaused: true,
               coins: state.coins,
               skillPoints: s.skillPoints + 1,
               upgradeLevels: { ...state.upgradeLevels }
             }));
           } else {
-            setUiState(s => ({ 
-              ...s, 
-              xp: state.xp, 
-              xpToNextLevel: state.xpToNextLevel,
-              coins: state.coins 
-            }));
+            setUiState(s => ({ ...s, xp: state.xp, xpToNextLevel: state.xpToNextLevel, coins: state.coins }));
           }
         }
       }
 
-      // 6. Particles
       for (let i = state.particles.length - 1; i >= 0; i--) {
         const p = state.particles[i];
         p.life -= dt;
@@ -462,27 +440,16 @@ export default function Game() {
       const skinId = params.get('skin') || 'pink';
       
       const skinColors: Record<string, string> = {
-        pink: '#ec4899',
-        cyan: '#06b6d4',
-        yellow: '#eab308',
-        green: '#22c55e'
+        pink: '#ec4899', cyan: '#06b6d4', yellow: '#eab308', green: '#22c55e'
       };
-      
       const skinShapes: Record<string, 'triangle' | 'diamond' | 'circle'> = {
-        pink: 'triangle',
-        cyan: 'diamond',
-        yellow: 'circle',
-        green: 'triangle'
+        pink: 'triangle', cyan: 'diamond', yellow: 'circle', green: 'triangle'
       };
-
       const playerColor = skinColors[skinId] || COLOR_PLAYER;
       const playerShape = skinShapes[skinId] || 'triangle';
       
-      // Clear
       ctx.fillStyle = '#0a0a0a';
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-      // Grid
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
       ctx.lineWidth = 1;
       const gridSize = 50;
@@ -493,134 +460,80 @@ export default function Game() {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CANVAS_WIDTH, y); ctx.stroke();
       }
 
-      // XP Gems
       state.xpGems.forEach(g => {
-        ctx.fillStyle = g.color;
-        ctx.beginPath();
-        ctx.arc(g.x, g.y, g.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 5;
-        ctx.shadowColor = g.color;
-        ctx.fill();
-        ctx.shadowBlur = 0;
+        ctx.fillStyle = g.color; ctx.beginPath(); ctx.arc(g.x, g.y, g.radius, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 5; ctx.shadowColor = g.color; ctx.fill(); ctx.shadowBlur = 0;
       });
 
-      // Bullets
       state.bullets.forEach(b => {
-        ctx.fillStyle = b.color;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2); ctx.fill();
       });
 
-      // Enemies
       state.enemies.forEach(e => {
-        ctx.fillStyle = e.color;
-        ctx.beginPath();
-        if (e.type === 'boss') {
-          // Boss: Square with border
-          ctx.rect(e.x - e.radius, e.y - e.radius, e.radius*2, e.radius*2);
-          ctx.fill();
-          ctx.strokeStyle = '#fff';
-          ctx.lineWidth = 2;
-          ctx.stroke();
+        const img = e.type === 'boss' ? enemyBossImgRef.current : (e.type === 'special' ? enemySpecialImgRef.current : enemyNormalImgRef.current);
+        if (img && img.complete && img.naturalWidth !== 0) {
+          ctx.drawImage(img, e.x - e.radius, e.y - e.radius, e.radius * 2, e.radius * 2);
         } else {
-          ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+          ctx.fillStyle = e.color; ctx.beginPath();
+          if (e.type === 'boss') ctx.rect(e.x - e.radius, e.y - e.radius, e.radius*2, e.radius*2);
+          else ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
           ctx.fill();
         }
-
-        // HP Bar for enemies
         const hpPct = e.hp / e.maxHp;
         if (hpPct < 1) {
-          ctx.fillStyle = 'red';
-          ctx.fillRect(e.x - 10, e.y - e.radius - 8, 20, 4);
-          ctx.fillStyle = '#0f0';
-          ctx.fillRect(e.x - 10, e.y - e.radius - 8, 20 * hpPct, 4);
+          ctx.fillStyle = 'red'; ctx.fillRect(e.x - 10, e.y - e.radius - 8, 20, 4);
+          ctx.fillStyle = '#0f0'; ctx.fillRect(e.x - 10, e.y - e.radius - 8, 20 * hpPct, 4);
         }
       });
 
-      // Player
       ctx.fillStyle = playerColor;
       ctx.beginPath();
-      // Triangle ship - use lastShootAngle for rotation
       const drawAngle = state.player.lastShootAngle || state.player.lastMoveAngle;
-      
       if (playerShape === 'triangle') {
-        ctx.moveTo(state.player.x + Math.cos(drawAngle) * state.player.radius, 
-                   state.player.y + Math.sin(drawAngle) * state.player.radius);
-        ctx.lineTo(state.player.x + Math.cos(drawAngle + 2.6) * state.player.radius, 
-                   state.player.y + Math.sin(drawAngle + 2.6) * state.player.radius);
-        ctx.lineTo(state.player.x + Math.cos(drawAngle - 2.6) * state.player.radius, 
-                   state.player.y + Math.sin(drawAngle - 2.6) * state.player.radius);
+        ctx.moveTo(state.player.x + Math.cos(drawAngle) * state.player.radius, state.player.y + Math.sin(drawAngle) * state.player.radius);
+        ctx.lineTo(state.player.x + Math.cos(drawAngle + 2.6) * state.player.radius, state.player.y + Math.sin(drawAngle + 2.6) * state.player.radius);
+        ctx.lineTo(state.player.x + Math.cos(drawAngle - 2.6) * state.player.radius, state.player.y + Math.sin(drawAngle - 2.6) * state.player.radius);
       } else if (playerShape === 'diamond') {
-        ctx.moveTo(state.player.x + Math.cos(drawAngle) * state.player.radius * 1.2, 
-                   state.player.y + Math.sin(drawAngle) * state.player.radius * 1.2);
-        ctx.lineTo(state.player.x + Math.cos(drawAngle + Math.PI/2) * state.player.radius * 0.8, 
-                   state.player.y + Math.sin(drawAngle + Math.PI/2) * state.player.radius * 0.8);
-        ctx.lineTo(state.player.x + Math.cos(drawAngle + Math.PI) * state.player.radius * 0.8, 
-                   state.player.y + Math.sin(drawAngle + Math.PI) * state.player.radius * 0.8);
-        ctx.lineTo(state.player.x + Math.cos(drawAngle - Math.PI/2) * state.player.radius * 0.8, 
-                   state.player.y + Math.sin(drawAngle - Math.PI/2) * state.player.radius * 0.8);
+        ctx.moveTo(state.player.x + Math.cos(drawAngle) * state.player.radius * 1.2, state.player.y + Math.sin(drawAngle) * state.player.radius * 1.2);
+        ctx.lineTo(state.player.x + Math.cos(drawAngle + Math.PI/2) * state.player.radius * 0.8, state.player.y + Math.sin(drawAngle + Math.PI/2) * state.player.radius * 0.8);
+        ctx.lineTo(state.player.x + Math.cos(drawAngle + Math.PI) * state.player.radius * 0.8, state.player.y + Math.sin(drawAngle + Math.PI) * state.player.radius * 0.8);
+        ctx.lineTo(state.player.x + Math.cos(drawAngle - Math.PI/2) * state.player.radius * 0.8, state.player.y + Math.sin(drawAngle - Math.PI/2) * state.player.radius * 0.8);
       } else {
         ctx.arc(state.player.x, state.player.y, state.player.radius, 0, Math.PI * 2);
       }
-      
       ctx.fill();
-      
-      // Glow
-      ctx.shadowColor = playerColor;
-      ctx.shadowBlur = 15;
-      ctx.fill();
-      ctx.shadowBlur = 0;
+      ctx.shadowColor = playerColor; ctx.shadowBlur = 15; ctx.fill(); ctx.shadowBlur = 0;
 
-
-      // Particles
       state.particles.forEach(p => {
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = p.life;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
+        ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
       });
     };
 
-    const loop = (timestamp: number) => {
+    const loop = () => {
       const state = gameState.current;
-      // Use performance.now() for high precision time tracking
       const now = performance.now();
       if (!state.lastTime) state.lastTime = now;
-      const dt = Math.min(0.032, (now - state.lastTime) / 1000); // Cap dt to prevent jumps
+      const dt = Math.min(0.032, (now - state.lastTime) / 1000);
       state.lastTime = now;
-
       update(dt);
       draw();
       animationFrameId = requestAnimationFrame(loop);
     };
 
     animationFrameId = requestAnimationFrame(loop);
-
     return () => cancelAnimationFrame(animationFrameId);
-  }, []);
+  }, [uiState.tempSkills]); // Added dependency to reflect dmg changes
 
-  // --- KEYBOARD CONTROLS ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Clear analog move values on keyboard input
       const state = gameState.current;
-      state.analogMove.x = 0;
-      state.analogMove.y = 0;
-
+      state.analogMove.x = 0; state.analogMove.y = 0;
       if (e.code === 'Space') {
         e.preventDefault();
         setUiState(prev => {
           const newPaused = !prev.isPaused;
           gameState.current.isPaused = newPaused;
-          // Space only pauses, no menu opening here
-          return { 
-            ...prev, 
-            isPaused: newPaused
-          };
+          return { ...prev, isPaused: newPaused };
         });
       }
       const k = gameState.current.keys;
@@ -642,29 +555,22 @@ export default function Game() {
     };
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
+    return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('keyup', handleKeyUp); };
   }, []);
 
   useEffect(() => {
-    // Apply Permanent Upgrades
     const saved = localStorage.getItem('permanentUpgrades');
     if (saved) {
       const perms = JSON.parse(saved);
       gameState.current.player.maxHp += perms.baseHp * 20;
       gameState.current.player.hp = gameState.current.player.maxHp;
       gameState.current.player.speed += perms.baseSpeed * 20;
-      // Damage handled in bullet collision or bullet damage stat
     }
   }, []);
 
-  // --- ACTIONS ---
   const handleUpgradeSelect = (id: string) => {
     const state = gameState.current;
     state.upgradeLevels[id] = (state.upgradeLevels[id] || 0) + 1;
-    
     switch(id) {
       case 'fireRate': state.player.fireRate *= 0.85; break;
       case 'moveSpeed': state.player.speed *= 1.1; break;
@@ -674,263 +580,147 @@ export default function Game() {
       case 'regen': state.player.regen += 0.5; break;
     }
     state.isPaused = false;
-    setUiState(s => ({ 
-      ...s, 
-      showUpgrade: false, 
-      isPaused: false,
-      upgradeLevels: { ...state.upgradeLevels }
-    }));
-  };
-
-  const toggleControls = () => {
-    setUiState(s => ({
-      ...s,
-      controlType: s.controlType === 'dpad' ? 'joystick' : 'dpad'
-    }));
+    setUiState(s => ({ ...s, showUpgrade: false, isPaused: false, upgradeLevels: { ...state.upgradeLevels } }));
   };
 
   const handlePauseToggle = () => {
     if (uiState.showUpgrade || uiState.isGameOver) return;
     const isPaused = !gameState.current.isPaused;
     gameState.current.isPaused = isPaused;
-    gameState.current.lastTime = 0; // Reset time to prevent huge dt jump
+    gameState.current.lastTime = 0;
     setUiState(s => ({ ...s, isPaused }));
   };
 
-  const handleManualUpgradeOpen = () => {
-    if (uiState.isGameOver || uiState.skillPoints <= 0) return;
-    gameState.current.isPaused = true;
-    setUiState(s => ({ ...s, isPaused: true, showTempSkills: true }));
+  const handleMoveJoystick = (dx: number, dy: number) => {
+    const state = gameState.current;
+    state.analogMove.x = dx; state.analogMove.y = dy;
+    state.keys.w = dy < -0.3; state.keys.s = dy > 0.3;
+    state.keys.a = dx < -0.3; state.keys.d = dx > 0.3;
   };
 
-    const handleMoveJoystick = (dx: number, dy: number) => {
-      const state = gameState.current;
-      state.analogMove.x = dx;
-      state.analogMove.y = dy;
-      
-      // Update binary keys for legacy logic if needed
-      state.keys.w = dy < -0.3;
-      state.keys.s = dy > 0.3;
-      state.keys.a = dx < -0.3;
-      state.keys.d = dx > 0.3;
-    };
-
-    const handleShootJoystick = (dx: number, dy: number) => {
-      const state = gameState.current;
-      state.analogShoot.x = dx;
-      state.analogShoot.y = dy;
-      
-      // Update direction immediately
-      if (dx !== 0 || dy !== 0) {
-        state.player.lastShootAngle = Math.atan2(dy, dx);
-      }
-    };
-
-  const handleVirtualPad = (dx: number, dy: number) => {
-    handleMoveJoystick(dx, dy);
+  const handleShootJoystick = (dx: number, dy: number) => {
+    const state = gameState.current;
+    state.analogShoot.x = dx; state.analogShoot.y = dy;
+    if (dx !== 0 || dy !== 0) state.player.lastShootAngle = Math.atan2(dy, dx);
   };
 
   const handleRevive = () => {
     const state = gameState.current;
     if (state.revivesLeft > 0) {
-      state.revivesLeft--;
-      state.isGameOver = false;
-      state.player.hp = state.player.maxHp;
-      // Nuke nearby enemies
-      state.enemies = state.enemies.filter(e => {
-        const dist = Math.sqrt((e.x - state.player.x)**2 + (e.y - state.player.y)**2);
-        return dist > 300; // clear 300px radius
-      });
+      state.revivesLeft--; state.isGameOver = false; state.player.hp = state.player.maxHp;
+      state.enemies = state.enemies.filter(e => Math.sqrt((e.x - state.player.x)**2 + (e.y - state.player.y)**2) > 300);
       state.lastTime = 0;
-      setUiState(s => ({ ...s, isGameOver: false, hp: state.player.maxHp, revivesLeft: state.revivesLeft }));
+      setUiState(s => ({ ...s, isGameOver: false, hp: state.player.hp, revivesLeft: state.revivesLeft }));
     }
   };
 
-  const handleRestart = () => {
-    window.location.reload();
-  };
-
-  const handleQuit = () => {
-    setLocation('/');
-  };
-
   return (
-    <div className="relative w-full h-screen bg-black overflow-hidden flex flex-col">
-      {/* HUD HEADER */}
-      <div className="absolute top-0 left-0 right-0 p-4 z-10 flex justify-between items-start pointer-events-none">
-        <div className="flex flex-col gap-2 w-64">
-          {/* Health */}
+    <div className="flex flex-col h-screen bg-[#0a0a0a] text-white overflow-hidden font-press-start select-none">
+      <header className="flex justify-between items-center p-4 border-b border-white/10 bg-black/50 backdrop-blur-md">
+        <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <span className="font-arcade text-xs text-primary">HP</span>
-            <div className="h-4 flex-1 bg-zinc-800 rounded-sm overflow-hidden border border-white/10">
-              <motion.div 
-                className="h-full bg-gradient-to-r from-pink-600 to-pink-400"
-                initial={{ width: '100%' }}
-                animate={{ width: `${(uiState.hp / uiState.maxHp) * 100}%` }}
-              />
-            </div>
+            <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+            <span className="text-xl">{uiState.score.toLocaleString()}</span>
           </div>
-          
-          {/* XP Bar */}
-          <div className="flex items-center gap-2">
-            <span className="font-arcade text-xs text-green-400">LVL {uiState.level}</span>
-            <div className="h-2 flex-1 bg-zinc-800 rounded-sm overflow-hidden border border-white/10">
-              <motion.div 
-                className="h-full bg-green-500"
-                initial={{ width: '0%' }}
-                animate={{ width: `${(uiState.xp / uiState.xpToNextLevel) * 100}%` }}
-              />
-            </div>
+          <div className="flex items-center gap-2 text-xs text-green-400">
+            <Trophy className="w-3 h-3" />
+            <span>LEVEL {uiState.level}</span>
           </div>
-        </div>
-
-        <div className="flex flex-col items-end pointer-events-auto gap-2">
-          <div className="flex items-center gap-2 bg-black/40 px-3 py-1 rounded border border-yellow-500/30">
-            <Star className="w-4 h-4 text-yellow-500" />
-            <span className="font-arcade text-sm text-yellow-500">{Math.floor(uiState.coins)}</span>
-          </div>
-          <div className="font-arcade text-xl text-white text-shadow-neon tracking-widest">
-            {Math.floor(uiState.score).toLocaleString().padStart(6, '0')}
-          </div>
-          <div className="flex gap-2">
-            <button 
-              onClick={() => {
-                if (uiState.skillPoints > 0) {
-                  handleManualUpgradeOpen();
-                }
-              }}
-              disabled={uiState.skillPoints <= 0}
-              className={`p-2 rounded border border-blue-500/50 transition-all ${uiState.skillPoints > 0 ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white animate-pulse' : 'bg-zinc-800/50 text-zinc-600 opacity-50 cursor-not-allowed'}`}
-            >
-              <Star className="w-6 h-6" />
-            </button>
-            <button 
-              onClick={toggleControls}
-              className="p-2 rounded bg-blue-500/20 text-blue-400 border border-blue-500/50 hover:bg-blue-500 hover:text-white transition-colors"
-              title="Toggle Controls"
-            >
-              <Gamepad2 className="w-6 h-6" />
-            </button>
-            <button 
-              onClick={handlePauseToggle}
-              className="p-2 rounded bg-white/10 text-white border border-white/20 hover:bg-white/20 transition-colors"
-            >
-              <Pause className="w-6 h-6" />
-            </button>
-            <button 
-              onClick={handleQuit}
-              className="p-2 rounded bg-red-500/10 text-red-500 border border-red-500/50 hover:bg-red-500 hover:text-white transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* PAUSE OVERLAY */}
-      {uiState.isPaused && !uiState.showUpgrade && !uiState.isGameOver && (
-        <div 
-          className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm cursor-pointer"
-          onClick={handlePauseToggle}
-        >
-          <h1 className="text-6xl font-arcade text-white animate-pulse">PAUSED</h1>
-        </div>
-      )}
-
-      {/* CANVAS LAYER */}
-      <div className="flex-1 flex items-center justify-center bg-black scanlines relative">
-        <canvas 
-          ref={canvasRef}
-          width={CANVAS_WIDTH}
-          height={CANVAS_HEIGHT}
-          className="max-w-full max-h-full object-contain border border-white/5 shadow-2xl"
-        />
-      </div>
-
-      {/* MOBILE CONTROLS (Overlay on bottom) */}
-      <div className="absolute bottom-4 left-0 right-0 z-30 md:hidden flex justify-between px-8 pointer-events-none">
-        <div className="pointer-events-auto scale-75 origin-bottom-left">
-          {uiState.controlType === 'dpad' ? (
-            <DPad onDirectionChange={handleMoveJoystick} />
-          ) : (
-            <Joystick onDirectionChange={handleMoveJoystick} />
-          )}
         </div>
         
-        {uiState.controlType === 'joystick' && (
-          <div className="pointer-events-auto scale-75 origin-bottom-right">
-            <Joystick onDirectionChange={handleShootJoystick} />
+        <div className="flex flex-col items-center gap-2 flex-1 max-w-xs px-4">
+          <div className="w-full h-4 bg-gray-800 rounded-full border-2 border-white/20 relative overflow-hidden">
+            <div className="h-full bg-blue-500 shadow-[0_0_10px_#3b82f6] transition-all duration-300" style={{ width: `${(uiState.xp / uiState.xpToNextLevel) * 100}%` }} />
+            <span className="absolute inset-0 flex items-center justify-center text-[8px] uppercase tracking-wider font-bold">XP NEXT: {uiState.xpToNextLevel - uiState.xp}</span>
           </div>
+          <div className="w-full h-4 bg-gray-800 rounded-full border-2 border-white/20 relative overflow-hidden">
+            <div className="h-full bg-red-500 shadow-[0_0_10px_#ef4444] transition-all duration-300" style={{ width: `${(uiState.hp / uiState.maxHp) * 100}%` }} />
+            <span className="absolute inset-0 flex items-center justify-center text-[8px] uppercase tracking-wider font-bold">HP: {Math.ceil(uiState.hp)}/{uiState.maxHp}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-2 text-yellow-500">
+              <span className="text-sm">{uiState.coins}</span>
+              <div className="w-4 h-4 rounded-full bg-yellow-500 border border-yellow-300 shadow-[0_0_5px_#eab308]" />
+            </div>
+          </div>
+          <button onClick={handlePauseToggle} className="p-2 hover:bg-white/10 rounded-lg transition-colors border border-white/10">
+            <Pause className="w-6 h-6" />
+          </button>
+        </div>
+      </header>
+
+      <main className="flex-1 relative flex items-center justify-center overflow-hidden">
+        <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} className="max-w-full max-h-full border-2 border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.5)]" />
+        
+        {uiState.controlType === 'dpad' ? (
+          <div className="absolute bottom-8 left-8"> <DPad onMove={handleMoveJoystick} /> </div>
+        ) : (
+          <div className="absolute bottom-16 left-16"> <Joystick size={120} onMove={handleMoveJoystick} label="MOVE" /> </div>
         )}
-      </div>
+        <div className="absolute bottom-16 right-16"> <Joystick size={120} onMove={handleShootJoystick} label="SHOOT" /> </div>
 
-      {/* MENUS */}
-      <AnimatePresence>
-        {uiState.showTempSkills && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="w-full max-w-md bg-zinc-900 border-2 border-blue-500 rounded-xl p-6 shadow-[0_0_20px_rgba(59,130,246,0.5)]"
-            >
-              <h2 className="text-2xl font-arcade text-blue-500 text-center mb-6">SKILL POINTS: {uiState.skillPoints}</h2>
-              <div className="grid gap-4">
-                {[
-                  { id: 'dmg', label: 'Damage', icon: <Star className="text-red-500" /> },
-                  { id: 'crit', label: 'Crit Chance', icon: <Star className="text-yellow-500" /> },
-                  { id: 'speed', label: 'Speed', icon: <Star className="text-blue-500" /> },
-                ].map(skill => (
-                  <button
-                    key={skill.id}
-                    onClick={() => {
-                      if (uiState.skillPoints > 0) {
-                        setUiState(s => {
-                          const nextSkillPoints = s.skillPoints - 1;
-                          const shouldClose = nextSkillPoints === 0;
-                          
-                          if (shouldClose) {
-                            gameState.current.isPaused = false;
-                          }
-
-                          return {
-                            ...s,
-                            skillPoints: nextSkillPoints,
-                            tempSkills: { ...s.tempSkills, [skill.id]: (s.tempSkills[skill.id] || 0) + 1 },
-                            showTempSkills: !shouldClose,
-                            isPaused: !shouldClose
-                          };
-                        });
-                      }
-                    }}
-                    className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10"
-                  >
-                    <div className="flex items-center gap-3">
-                      {skill.icon}
-                      <span className="font-bold">{skill.label}</span>
-                    </div>
-                    <span className="font-arcade text-xs">LVL {uiState.tempSkills[skill.id] || 0}</span>
-                  </button>
-                ))}
-                <button 
-                  onClick={() => setUiState(s => ({ ...s, showTempSkills: false, isPaused: false }))}
-                  className="mt-4 p-2 font-arcade text-xs text-muted-foreground underline"
-                >
-                  CLOSE
-                </button>
+        <AnimatePresence>
+          {uiState.showTempSkills && (
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+              <div className="bg-gray-900 border-4 border-blue-500 p-6 rounded-xl max-w-md w-full shadow-[0_0_30px_rgba(59,130,246,0.5)]">
+                <h2 className="text-2xl text-blue-400 mb-2 text-center">LEVEL UP!</h2>
+                <p className="text-xs text-gray-400 mb-6 text-center italic">Choose your battle enhancement</p>
+                <div className="space-y-4">
+                  {[
+                    { id: 'dmg', label: 'ATTACK UP', icon: '⚔️', desc: '+1 Damage' },
+                    { id: 'crit', label: 'CRIT CHANCE', icon: '⚡', desc: '+5% Crit' },
+                    { id: 'speed', label: 'AGILITY', icon: '💨', desc: '+10% Speed' }
+                  ].map(skill => (
+                    <button key={skill.id} onClick={() => {
+                      setUiState(s => ({
+                        ...s, 
+                        showTempSkills: false, isPaused: false, 
+                        tempSkills: { ...s.tempSkills, [skill.id]: s.tempSkills[skill.id] + 1 }
+                      }));
+                      gameState.current.isPaused = false;
+                    }} className="w-full p-4 bg-gray-800 hover:bg-gray-700 border-2 border-white/10 hover:border-blue-400 rounded-lg flex items-center gap-4 transition-all">
+                      <span className="text-2xl">{skill.icon}</span>
+                      <div className="flex-1 text-left">
+                        <div className="text-sm font-bold">{skill.label}</div>
+                        <div className="text-[10px] text-gray-400">{skill.desc}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             </motion.div>
-          </div>
-        )}
-        {uiState.isGameOver && (
-          <GameOverMenu 
-            score={Math.floor(uiState.score)}
-            level={uiState.level}
-            revivesLeft={uiState.revivesLeft}
-            onRevive={handleRevive}
-            onRestart={handleRestart}
-          />
-        )}
-      </AnimatePresence>
+          )}
+          {uiState.isPaused && !uiState.showTempSkills && !uiState.isGameOver && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+              <div className="text-center p-8 bg-gray-900 border-2 border-white/20 rounded-2xl">
+                <h2 className="text-4xl mb-8">PAUSED</h2>
+                <button onClick={handlePauseToggle} className="px-8 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 transition-all">RESUME</button>
+                <div className="mt-8 grid grid-cols-2 gap-4">
+                  <button onClick={() => setUiState(s => ({ ...s, controlType: s.controlType === 'dpad' ? 'joystick' : 'dpad' }))} className="p-4 bg-gray-800 rounded-lg border border-white/10 flex flex-col items-center gap-2">
+                    <Gamepad2 className="w-6 h-6" />
+                    <span className="text-[10px]">{uiState.controlType.toUpperCase()}</span>
+                  </button>
+                  <button onClick={() => setLocation('/')} className="p-4 bg-gray-800 rounded-lg border border-white/10 flex flex-col items-center gap-2">
+                    <X className="w-6 h-6" />
+                    <span className="text-[10px]">EXIT</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+          {uiState.isGameOver && (
+            <GameOverMenu score={uiState.score} level={uiState.level} revivesLeft={uiState.revivesLeft} onRevive={handleRevive} onRestart={() => window.location.reload()} />
+          )}
+        </AnimatePresence>
+      </main>
+
+      <footer className="p-2 border-t border-white/10 bg-black text-[10px] flex justify-between text-gray-500 uppercase tracking-widest">
+        <span>WASD / ARROWS TO MOVE • MOUSE / JOYSTICK TO SHOOT</span>
+        <span>© 2026 NEON BLITZ v1.0</span>
+      </footer>
     </div>
   );
 }
