@@ -655,8 +655,8 @@ export default function Game() {
       <main className="flex-1 relative flex items-center justify-center overflow-hidden">
         <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} className="max-w-full max-h-full border-2 border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.5)]" />
         
-        <div className="absolute bottom-12 left-12 transform scale-[0.6] md:scale-100 origin-bottom-left z-30"> <Joystick size={120} onMove={handleMoveJoystick} label="MOVER" /> </div>
-        <div className="absolute bottom-12 right-4 transform scale-[0.6] md:scale-100 origin-bottom-right z-30"> <Joystick size={120} onMove={handleShootJoystick} label="DISPARAR" /> </div>
+        <div className="absolute bottom-6 left-6 transform scale-[0.6] md:scale-100 origin-bottom-left z-30"> <Joystick size={120} onMove={handleMoveJoystick} label="MOVER" /> </div>
+        <div className="absolute bottom-6 right-2 transform scale-[0.6] md:scale-100 origin-bottom-right z-30"> <Joystick size={120} onMove={handleShootJoystick} label="DISPARAR" /> </div>
 
         <AnimatePresence>
           {uiState.showTempSkills && (
