@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pause, Star, X, Gamepad2 } from 'lucide-react';
+import { Pause, Star, X, Gamepad2, Trophy } from 'lucide-react';
 import { DPad } from '@/components/game/DPad';
 import { Joystick } from '@/components/game/Joystick';
-import { UpgradeMenu } from '@/components/game/UpgradeMenu';
+// import { UpgradeMenu } from '@/components/game/UpgradeMenu'; // Removed
 import { GameOverMenu } from '@/components/game/GameOverMenu';
 
 // --- GAME CONSTANTS ---
@@ -140,13 +140,21 @@ export default function Game() {
 
     const spawnEnemy = () => {
       const state = gameState.current;
+      const params = new URLSearchParams(window.location.search);
+      const difficulty = params.get('difficulty') || 'medium';
+      
+      let statMult = 1.0;
+      if (difficulty === 'medium') statMult = 1.15;
+      if (difficulty === 'hard') statMult = 1.15 * 1.5;
+      if (difficulty === 'extreme') statMult = 1.15 * 1.5 * 3.0;
+
       const isBoss = state.level % 5 === 0 && state.enemies.filter(e => e.type === 'boss').length === 0;
       const isSpecial = state.level % 2 === 0 && !isBoss && Math.random() < 0.3;
       
       let type: 'normal' | 'special' | 'boss' = 'normal';
       let radius = ENEMY_SIZE_NORMAL / 2;
-      let hp = 10 + (state.level * 5);
-      let speed = 100 + (state.level * 2);
+      let hp = (10 + (state.level * 5)) * statMult;
+      let speed = (100 + (state.level * 2)) * (1 + (statMult - 1) * 0.2); // Slower scaling for speed
       let color = COLOR_ENEMY;
       let xpValue = 10;
 
@@ -302,7 +310,12 @@ export default function Game() {
           const dbx = e.x - b.x;
           const dby = e.y - b.y;
           if (Math.sqrt(dbx*dbx + dby*dby) < e.radius + b.radius) {
-            e.hp -= 10; // Bullet Damage
+            const saved = localStorage.getItem('permanentUpgrades');
+            const perms = saved ? JSON.parse(saved) : { baseDmg: 0 };
+            const baseDamage = 10 + (perms.baseDmg * 2) + (uiState.tempSkills.dmg * 3);
+            const isCrit = Math.random() < (uiState.tempSkills.crit * 0.05);
+            
+            e.hp -= isCrit ? baseDamage * 2 : baseDamage;
             b.pierce--;
             
             // Effect
@@ -345,7 +358,11 @@ export default function Game() {
 
         if (dist < state.player.radius + g.radius) {
           state.xp += g.xpValue!;
-          state.coins += g.xpValue! / 2; // Earn coins from gems
+          const coinsEarned = Math.floor(g.xpValue! / 2);
+          state.coins += coinsEarned;
+          // Update total gold in localStorage
+          const currentTotal = parseInt(localStorage.getItem('goldCoins') || '0');
+          localStorage.setItem('goldCoins', (currentTotal + coinsEarned).toString());
           state.xpGems.splice(i, 1);
 
           // Level Up Check
@@ -530,6 +547,18 @@ export default function Game() {
     };
   }, []);
 
+  useEffect(() => {
+    // Apply Permanent Upgrades
+    const saved = localStorage.getItem('permanentUpgrades');
+    if (saved) {
+      const perms = JSON.parse(saved);
+      gameState.current.player.maxHp += perms.baseHp * 20;
+      gameState.current.player.hp = gameState.current.player.maxHp;
+      gameState.current.player.speed += perms.baseSpeed * 20;
+      // Damage handled in bullet collision or bullet damage stat
+    }
+  }, []);
+
   // --- ACTIONS ---
   const handleUpgradeSelect = (id: string) => {
     const state = gameState.current;
@@ -636,13 +665,17 @@ export default function Game() {
         </div>
 
         <div className="flex flex-col items-end pointer-events-auto gap-2">
+          <div className="flex items-center gap-2 bg-black/40 px-3 py-1 rounded border border-yellow-500/30">
+            <Star className="w-4 h-4 text-yellow-500" />
+            <span className="font-arcade text-sm text-yellow-500">{Math.floor(uiState.coins)}</span>
+          </div>
           <div className="font-arcade text-xl text-white text-shadow-neon tracking-widest">
             {Math.floor(uiState.score).toLocaleString().padStart(6, '0')}
           </div>
           <div className="flex gap-2">
             <button 
-              onClick={handleManualUpgradeOpen}
-              className="p-2 rounded bg-yellow-500/20 text-yellow-500 border border-yellow-500/50 hover:bg-yellow-500 hover:text-black transition-colors"
+              onClick={() => setUiState(s => ({ ...s, showTempSkills: true, isPaused: true }))}
+              className="p-2 rounded bg-blue-500/20 text-blue-400 border border-blue-500/50 hover:bg-blue-500 hover:text-white transition-colors"
             >
               <Star className="w-6 h-6" />
             </button>
@@ -707,9 +740,9 @@ export default function Game() {
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="w-full max-w-md bg-zinc-900 border-2 border-primary rounded-xl p-6"
+              className="w-full max-w-md bg-zinc-900 border-2 border-blue-500 rounded-xl p-6 shadow-[0_0_20px_rgba(59,130,246,0.5)]"
             >
-              <h2 className="text-2xl font-arcade text-primary text-center mb-6">SKILL POINTS: {uiState.skillPoints}</h2>
+              <h2 className="text-2xl font-arcade text-blue-500 text-center mb-6">SKILL POINTS: {uiState.skillPoints}</h2>
               <div className="grid gap-4">
                 {[
                   { id: 'dmg', label: 'Damage', icon: <Star className="text-red-500" /> },
@@ -724,13 +757,9 @@ export default function Game() {
                           ...s,
                           skillPoints: s.skillPoints - 1,
                           tempSkills: { ...s.tempSkills, [skill.id]: (s.tempSkills[skill.id] || 0) + 1 },
-                          showTempSkills: s.skillPoints > 1, // Keep open if more points
-                          showUpgrade: s.skillPoints === 1, // Show level upgrade after spending
+                          showTempSkills: s.skillPoints > 1,
                           isPaused: s.skillPoints > 1
                         }));
-                        if (uiState.skillPoints === 1) {
-                           // If it was the last point, resume or show normal upgrade
-                        }
                       }
                     }}
                     className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10"
@@ -743,21 +772,14 @@ export default function Game() {
                   </button>
                 ))}
                 <button 
-                  onClick={() => setUiState(s => ({ ...s, showTempSkills: false, showUpgrade: true }))}
+                  onClick={() => setUiState(s => ({ ...s, showTempSkills: false, isPaused: false }))}
                   className="mt-4 p-2 font-arcade text-xs text-muted-foreground underline"
                 >
-                  SKIP TO UPGRADES
+                  CLOSE
                 </button>
               </div>
             </motion.div>
           </div>
-        )}
-        {uiState.showUpgrade && (
-          <UpgradeMenu 
-            onSelect={handleUpgradeSelect} 
-            coins={uiState.coins}
-            upgradeLevels={uiState.upgradeLevels}
-          />
         )}
         {uiState.isGameOver && (
           <GameOverMenu 

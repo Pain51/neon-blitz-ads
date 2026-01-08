@@ -3,20 +3,94 @@ import { useLocation } from 'wouter';
 import { useScores } from '@/hooks/use-scores';
 import { GameButton } from '@/components/ui/GameButton';
 import { motion } from 'framer-motion';
-import { Trophy, Play, Skull, Crosshair, Star } from 'lucide-react';
+import { Trophy, Play, Skull, Crosshair, Star, X } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
 
 export default function Home() {
   const [, setLocation] = useLocation();
   const { data: scores, isLoading } = useScores();
 
   const [difficulty, setDifficulty] = React.useState<'easy' | 'medium' | 'hard' | 'extreme'>('medium');
+  const [showPermanentUpgrades, setShowPermanentUpgrades] = React.useState(false);
+  const [goldCoins, setGoldCoins] = React.useState(() => {
+    const saved = localStorage.getItem('goldCoins');
+    return saved ? parseInt(saved) : 0;
+  });
+  const [permUpgrades, setPermUpgrades] = React.useState(() => {
+    const saved = localStorage.getItem('permanentUpgrades');
+    return saved ? JSON.parse(saved) : {
+      baseHp: 0,
+      baseSpeed: 0,
+      baseDmg: 0
+    };
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem('permanentUpgrades', JSON.stringify(permUpgrades));
+    localStorage.setItem('goldCoins', goldCoins.toString());
+  }, [permUpgrades, goldCoins]);
 
   const startMission = () => {
     setLocation(`/game?difficulty=${difficulty}`);
   };
 
+  const buyUpgrade = (key: string, cost: number) => {
+    if (goldCoins >= cost) {
+      setGoldCoins(c => c - cost);
+      setPermUpgrades((u: any) => ({ ...u, [key]: u[key] + 1 }));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      {/* Permanent Upgrades Modal */}
+      <AnimatePresence>
+        {showPermanentUpgrades && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="w-full max-w-md bg-zinc-900 border-2 border-yellow-500 rounded-xl p-6"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-arcade text-yellow-500">PERMANENT UPGRADES</h2>
+                <button onClick={() => setShowPermanentUpgrades(false)} className="text-white hover:text-primary">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="mb-4 text-center">
+                <span className="text-yellow-500 font-arcade">COINS: {goldCoins}</span>
+              </div>
+              <div className="grid gap-4">
+                {[
+                  { id: 'baseHp', label: 'Base HP', cost: 100 },
+                  { id: 'baseSpeed', label: 'Base Speed', cost: 150 },
+                  { id: 'baseDmg', label: 'Base Damage', cost: 200 },
+                ].map(upg => {
+                  const level = (permUpgrades as any)[upg.id];
+                  const currentCost = upg.cost * (level + 1);
+                  return (
+                    <button
+                      key={upg.id}
+                      onClick={() => buyUpgrade(upg.id, currentCost)}
+                      disabled={goldCoins < currentCost}
+                      className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 disabled:opacity-50"
+                    >
+                      <div className="flex flex-col items-start">
+                        <span className="font-bold">{upg.label}</span>
+                        <span className="text-xs text-yellow-500">Cost: {currentCost}</span>
+                      </div>
+                      <span className="font-arcade text-xs">LVL {level}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Background Ambience */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[100px] animate-pulse" />
@@ -56,7 +130,7 @@ export default function Home() {
 
           <div className="grid grid-cols-2 gap-4 w-full">
             <button 
-              onClick={() => {/* TODO: Permanent Upgrades Menu */}}
+              onClick={() => setShowPermanentUpgrades(true)}
               className="p-4 bg-black/40 rounded border border-white/5 flex flex-col items-center text-center hover:bg-white/10 transition-colors"
             >
               <Star className="w-8 h-8 text-yellow-500 mb-2" />
