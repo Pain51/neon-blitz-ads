@@ -212,17 +212,21 @@ export default function Game() {
       let dx = 0;
       let dy = 0;
 
-      // Handle both keyboard and virtual controls properly
-      if (state.keys.w) dy -= 1;
-      if (state.keys.s) dy += 1;
-      if (state.keys.a) dx -= 1;
-      if (state.keys.d) dx += 1;
+      // Check for analog input first (Joystick)
+      if ((state.keys as any).analogX !== undefined) {
+        dx = (state.keys as any).analogX;
+        dy = (state.keys as any).analogY;
+      } else {
+        // Fallback to keyboard
+        if (state.keys.w) dy -= 1;
+        if (state.keys.s) dy += 1;
+        if (state.keys.a) dx -= 1;
+        if (state.keys.d) dx += 1;
+      }
 
-      // If using virtual controls (like Joystick), they directly set keys which is fine
-      // but let's ensure normalization only happens if we have values
       if (dx !== 0 || dy !== 0) {
         const len = Math.sqrt(dx*dx + dy*dy);
-        // If it's a joystick value (not just 1 or -1), use it directly but capped at 1
+        // Normalize if combined magnitude > 1
         const moveX = dx / (len > 1 ? len : 1);
         const moveY = dy / (len > 1 ? len : 1);
         
@@ -552,6 +556,11 @@ export default function Game() {
   // --- KEYBOARD CONTROLS ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Clear analog values on keyboard input
+      const k_val = gameState.current.keys;
+      delete (k_val as any).analogX;
+      delete (k_val as any).analogY;
+
       if (e.code === 'Space') {
         e.preventDefault();
         setUiState(prev => {
@@ -573,12 +582,12 @@ export default function Game() {
       }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
-      const k = gameState.current.keys;
+      const k_up = gameState.current.keys;
       switch(e.key.toLowerCase()) {
-        case 'w': case 'arrowup': k.w = false; break;
-        case 's': case 'arrowdown': k.s = false; break;
-        case 'a': case 'arrowleft': k.a = false; break;
-        case 'd': case 'arrowright': k.d = false; break;
+        case 'w': case 'arrowup': k_up.w = false; break;
+        case 's': case 'arrowdown': k_up.s = false; break;
+        case 'a': case 'arrowleft': k_up.a = false; break;
+        case 'd': case 'arrowright': k_up.d = false; break;
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -646,10 +655,24 @@ export default function Game() {
 
   const handleVirtualPad = (dx: number, dy: number) => {
     const k = gameState.current.keys;
-    k.w = dy < 0;
-    k.s = dy > 0;
-    k.a = dx < 0;
-    k.d = dx > 0;
+    // For joystick/dpad, we want to allow smooth movement.
+    // However, the current handleKeyDown/KeyUp system uses binary keys.
+    // We should probably modify the update loop to check for analog values or 
+    // just use a threshold for the keys if we want to keep it simple, 
+    // OR directly set the velocity if we want 360 degree movement.
+    
+    // To fix "character only moves in diagonal", we need to ensure the update loop
+    // uses the analog values from dx/dy instead of just the binary keys.
+    
+    // Let's store the analog values in the keys object
+    (k as any).analogX = dx;
+    (k as any).analogY = dy;
+    
+    // Fallback for binary logic elsewhere
+    k.w = dy < -0.3;
+    k.s = dy > 0.3;
+    k.a = dx < -0.3;
+    k.d = dx > 0.3;
   };
 
   const handleRevive = () => {
@@ -770,7 +793,7 @@ export default function Game() {
       </div>
 
       {/* MOBILE CONTROLS (Overlay on bottom) */}
-      <div className="absolute bottom-6 left-0 right-0 z-30 md:hidden flex justify-center pointer-events-none">
+      <div className="absolute bottom-2 left-0 right-0 z-30 md:hidden flex justify-center pointer-events-none">
         <div className="pointer-events-auto scale-75 origin-bottom">
           {uiState.controlType === 'dpad' ? (
             <DPad onDirectionChange={handleVirtualPad} />
