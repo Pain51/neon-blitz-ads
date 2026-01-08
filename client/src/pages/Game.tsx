@@ -1030,15 +1030,15 @@ export default function Game() {
       // Draw combo indicator
       if (state.combo > 1) {
         ctx.globalAlpha = Math.min(1, state.comboTimer);
-        ctx.font = 'bold 24px Arial';
+        ctx.font = 'bold 18px Arial';
         ctx.fillStyle = state.combo >= 10 ? '#ef4444' : state.combo >= 5 ? '#f59e0b' : '#22c55e';
         ctx.textAlign = 'center';
         ctx.shadowColor = ctx.fillStyle;
-        ctx.shadowBlur = 10;
-        ctx.fillText(`${state.combo}x COMBO!`, CANVAS_WIDTH / 2, 50);
-        ctx.font = '14px Arial';
+        ctx.shadowBlur = 8;
+        ctx.fillText(`${state.combo}x COMBO!`, CANVAS_WIDTH / 2, 30);
+        ctx.font = '11px Arial';
         ctx.fillStyle = '#fff';
-        ctx.fillText(`+${Math.floor((state.combo - 1) * 10)}% bonus`, CANVAS_WIDTH / 2, 70);
+        ctx.fillText(`+${Math.floor((state.combo - 1) * 10)}%`, CANVAS_WIDTH / 2, 45);
         ctx.shadowBlur = 0;
         ctx.globalAlpha = 1;
       }
@@ -1325,7 +1325,7 @@ export default function Game() {
           </>
         )}
 
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           {uiState.showTempSkills && (
             <motion.div key="temp-skills" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
               <div className="bg-gray-900 border-4 border-blue-500 p-6 rounded-xl max-w-md w-full shadow-[0_0_30px_rgba(59,130,246,0.5)]">
