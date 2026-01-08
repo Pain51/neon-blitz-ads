@@ -787,20 +787,22 @@ export default function Game() {
                     key={skill.id}
                     onClick={() => {
                       if (uiState.skillPoints > 0) {
-                        const nextSkillPoints = uiState.skillPoints - 1;
-                        const shouldClose = nextSkillPoints === 0;
-                        
-                        setUiState(s => ({
-                          ...s,
-                          skillPoints: nextSkillPoints,
-                          tempSkills: { ...s.tempSkills, [skill.id]: (s.tempSkills[skill.id] || 0) + 1 },
-                          showTempSkills: !shouldClose,
-                          isPaused: !shouldClose
-                        }));
-                        
-                        if (shouldClose) {
-                          gameState.current.isPaused = false;
-                        }
+                        setUiState(s => {
+                          const nextSkillPoints = s.skillPoints - 1;
+                          const shouldClose = nextSkillPoints === 0;
+                          
+                          if (shouldClose) {
+                            gameState.current.isPaused = false;
+                          }
+
+                          return {
+                            ...s,
+                            skillPoints: nextSkillPoints,
+                            tempSkills: { ...s.tempSkills, [skill.id]: (s.tempSkills[skill.id] || 0) + 1 },
+                            showTempSkills: !shouldClose,
+                            isPaused: !shouldClose
+                          };
+                        });
                       }
                     }}
                     className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10"
