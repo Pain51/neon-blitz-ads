@@ -554,7 +554,15 @@ export default function Game() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
         e.preventDefault();
-        handleManualUpgradeOpen();
+        setUiState(prev => {
+          const newPaused = !prev.isPaused;
+          gameState.current.isPaused = newPaused;
+          // Space only pauses, no menu opening here
+          return { 
+            ...prev, 
+            isPaused: newPaused
+          };
+        });
       }
       const k = gameState.current.keys;
       switch(e.key.toLowerCase()) {
@@ -631,7 +639,7 @@ export default function Game() {
   };
 
   const handleManualUpgradeOpen = () => {
-    if (uiState.isGameOver) return;
+    if (uiState.isGameOver || uiState.skillPoints <= 0) return;
     gameState.current.isPaused = true;
     setUiState(s => ({ ...s, isPaused: true, showTempSkills: true }));
   };
@@ -708,8 +716,13 @@ export default function Game() {
           </div>
           <div className="flex gap-2">
             <button 
-              onClick={() => setUiState(s => ({ ...s, showTempSkills: true, isPaused: true }))}
-              className="p-2 rounded bg-blue-500/20 text-blue-400 border border-blue-500/50 hover:bg-blue-500 hover:text-white transition-colors"
+              onClick={() => {
+                if (uiState.skillPoints > 0) {
+                  handleManualUpgradeOpen();
+                }
+              }}
+              disabled={uiState.skillPoints <= 0}
+              className={`p-2 rounded border border-blue-500/50 transition-all ${uiState.skillPoints > 0 ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white animate-pulse' : 'bg-zinc-800/50 text-zinc-600 opacity-50 cursor-not-allowed'}`}
             >
               <Star className="w-6 h-6" />
             </button>
