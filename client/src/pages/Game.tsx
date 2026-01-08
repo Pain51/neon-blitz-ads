@@ -943,6 +943,17 @@ export default function Game() {
         ctx.fillText(icons[pu.type] || '?', pu.x, pu.y);
       });
 
+      // Draw bullet trails (muzzle flash) BEFORE bullets/player
+      state.bulletTrails.forEach(t => {
+        ctx.globalAlpha = t.life * 0.4;
+        ctx.fillStyle = t.color;
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, 6 * t.life, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+      });
+
       state.bullets.forEach(b => {
         ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2); ctx.fill();
       });
@@ -998,20 +1009,6 @@ export default function Game() {
 
       state.particles.forEach(p => {
         ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
-      });
-      
-      // Draw bullet trails (muzzle flash effect)
-      state.bulletTrails.forEach(t => {
-        ctx.globalAlpha = t.life * 0.6;
-        ctx.fillStyle = t.color;
-        ctx.beginPath();
-        ctx.arc(t.x, t.y, 8 * t.life, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowColor = t.color;
-        ctx.shadowBlur = 15 * t.life;
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        ctx.globalAlpha = 1;
       });
       
       // Draw damage numbers
