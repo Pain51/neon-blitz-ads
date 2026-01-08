@@ -655,12 +655,8 @@ export default function Game() {
       <main className="flex-1 relative flex items-center justify-center overflow-hidden">
         <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} className="max-w-full max-h-full border-2 border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.5)]" />
         
-        {uiState.controlType === 'dpad' ? (
-          <div className="absolute bottom-2 left-2 transform scale-[0.5] md:scale-100 origin-bottom-left z-30"> <DPad onDirectionChange={handleMoveJoystick} /> </div>
-        ) : (
-          <div className="absolute bottom-10 left-2 transform scale-[0.5] md:scale-100 origin-bottom-left z-30"> <Joystick size={120} onMove={handleMoveJoystick} label="MOVER" /> </div>
-        )}
-        <div className="absolute bottom-10 right-2 transform scale-[0.5] md:scale-100 origin-bottom-right z-30"> <Joystick size={120} onMove={handleShootJoystick} label="DISPARAR" /> </div>
+        <div className="absolute bottom-12 left-12 transform scale-[0.6] md:scale-100 origin-bottom-left z-30"> <Joystick size={120} onMove={handleMoveJoystick} label="MOVER" /> </div>
+        <div className="absolute bottom-12 right-4 transform scale-[0.6] md:scale-100 origin-bottom-right z-30"> <Joystick size={120} onMove={handleShootJoystick} label="DISPARAR" /> </div>
 
         <AnimatePresence>
           {uiState.showTempSkills && (
@@ -698,12 +694,8 @@ export default function Game() {
               <div className="text-center p-8 bg-gray-900 border-2 border-white/20 rounded-2xl">
                 <h2 className="text-4xl mb-8">PAUSA</h2>
                 <button onClick={handlePauseToggle} className="px-8 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 transition-all">REANUDAR</button>
-                <div className="mt-8 grid grid-cols-2 gap-4">
-                  <button onClick={() => setUiState(s => ({ ...s, controlType: s.controlType === 'dpad' ? 'joystick' : 'dpad' }))} className="p-4 bg-gray-800 rounded-lg border border-white/10 flex flex-col items-center gap-2">
-                    <Gamepad2 className="w-6 h-6" />
-                    <span className="text-[10px]">{uiState.controlType.toUpperCase()}</span>
-                  </button>
-                  <button onClick={() => setLocation('/')} className="p-4 bg-gray-800 rounded-lg border border-white/10 flex flex-col items-center gap-2">
+                <div className="mt-8 flex justify-center gap-4">
+                  <button onClick={() => setLocation('/')} className="p-4 px-8 bg-gray-800 rounded-lg border border-white/10 flex flex-col items-center gap-2">
                     <X className="w-6 h-6" />
                     <span className="text-[10px]">SALIR</span>
                   </button>
