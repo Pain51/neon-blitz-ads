@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { useScores } from '@/hooks/use-scores';
 import { GameButton } from '@/components/ui/GameButton';
 import { motion } from 'framer-motion';
-import { Trophy, Play, Skull, Crosshair } from 'lucide-react';
+import { Trophy, Play, Skull, Crosshair, Star } from 'lucide-react';
 
 export default function Home() {
   const [, setLocation] = useLocation();
