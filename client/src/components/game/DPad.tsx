@@ -25,10 +25,11 @@ export const DPad: React.FC<DPadProps> = ({ onDirectionChange }) => {
   const preventContext = (e: React.SyntheticEvent) => e.preventDefault();
 
   const btnClass = (x: number, y: number) => `
-    w-16 h-16 flex items-center justify-center 
-    bg-muted/80 backdrop-blur-sm border-2 border-primary/30 rounded-lg
-    active:bg-primary/40 active:border-primary transition-colors
-    ${activeDirection.x === x && activeDirection.y === y ? 'bg-primary/40 border-primary' : ''}
+    w-20 h-20 flex items-center justify-center 
+    bg-zinc-800/90 backdrop-blur-md border-2 border-primary/40 rounded-xl
+    active:scale-95 active:bg-primary/30 active:border-primary transition-all
+    ${activeDirection.x === x && activeDirection.y === y ? 'bg-primary/40 border-primary scale-95' : ''}
+    shadow-lg shadow-black/50
   `;
 
   return (

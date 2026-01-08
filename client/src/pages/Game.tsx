@@ -115,11 +115,18 @@ export default function Game() {
     xpToNextLevel: 100,
     isPaused: false,
     showUpgrade: false,
+    showTempSkills: false,
     isGameOver: false,
     revivesLeft: 3,
     coins: 0,
+    skillPoints: 0,
     controlType: 'dpad' as 'dpad' | 'joystick',
     upgradeLevels: {} as Record<string, number>,
+    tempSkills: {
+      dmg: 0,
+      crit: 0,
+      speed: 0,
+    } as Record<string, number>,
   });
 
   // --- GAME LOOP ---
@@ -347,14 +354,17 @@ export default function Game() {
             state.xp -= state.xpToNextLevel;
             state.xpToNextLevel = Math.floor(state.xpToNextLevel * 1.5);
             state.isPaused = true;
+            
+            // Gain skill point every level
             setUiState(s => ({
               ...s,
               level: state.level,
               xp: state.xp,
               xpToNextLevel: state.xpToNextLevel,
-              showUpgrade: true,
+              showTempSkills: true, // Show skills menu instead of basic upgrade
               isPaused: true,
               coins: state.coins,
+              skillPoints: s.skillPoints + 1,
               upgradeLevels: { ...state.upgradeLevels }
             }));
           } else {
@@ -692,6 +702,56 @@ export default function Game() {
 
       {/* MENUS */}
       <AnimatePresence>
+        {uiState.showTempSkills && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="w-full max-w-md bg-zinc-900 border-2 border-primary rounded-xl p-6"
+            >
+              <h2 className="text-2xl font-arcade text-primary text-center mb-6">SKILL POINTS: {uiState.skillPoints}</h2>
+              <div className="grid gap-4">
+                {[
+                  { id: 'dmg', label: 'Damage', icon: <Star className="text-red-500" /> },
+                  { id: 'crit', label: 'Crit Chance', icon: <Star className="text-yellow-500" /> },
+                  { id: 'speed', label: 'Speed', icon: <Star className="text-blue-500" /> },
+                ].map(skill => (
+                  <button
+                    key={skill.id}
+                    onClick={() => {
+                      if (uiState.skillPoints > 0) {
+                        setUiState(s => ({
+                          ...s,
+                          skillPoints: s.skillPoints - 1,
+                          tempSkills: { ...s.tempSkills, [skill.id]: (s.tempSkills[skill.id] || 0) + 1 },
+                          showTempSkills: s.skillPoints > 1, // Keep open if more points
+                          showUpgrade: s.skillPoints === 1, // Show level upgrade after spending
+                          isPaused: s.skillPoints > 1
+                        }));
+                        if (uiState.skillPoints === 1) {
+                           // If it was the last point, resume or show normal upgrade
+                        }
+                      }
+                    }}
+                    className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10"
+                  >
+                    <div className="flex items-center gap-3">
+                      {skill.icon}
+                      <span className="font-bold">{skill.label}</span>
+                    </div>
+                    <span className="font-arcade text-xs">LVL {uiState.tempSkills[skill.id] || 0}</span>
+                  </button>
+                ))}
+                <button 
+                  onClick={() => setUiState(s => ({ ...s, showTempSkills: false, showUpgrade: true }))}
+                  className="mt-4 p-2 font-arcade text-xs text-muted-foreground underline"
+                >
+                  SKIP TO UPGRADES
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
         {uiState.showUpgrade && (
           <UpgradeMenu 
             onSelect={handleUpgradeSelect} 
