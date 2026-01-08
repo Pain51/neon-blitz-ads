@@ -28,6 +28,7 @@ export const Joystick: React.FC<JoystickProps> = ({ onDirectionChange }) => {
     const normalizedX = dx / radius;
     const normalizedY = dy / radius;
 
+    // Use raw values for 360 degree movement
     setPosition({ x: dx, y: dy });
     onDirectionChange(normalizedX, normalizedY);
   };
