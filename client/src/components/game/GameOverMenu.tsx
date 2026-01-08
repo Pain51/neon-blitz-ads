@@ -19,6 +19,7 @@ interface GameOverMenuProps {
   stats?: GameStats;
   onRevive: () => void;
   onRestart: () => void;
+  onExit: () => void;
 }
 
 export const GameOverMenu: React.FC<GameOverMenuProps> = ({ 
@@ -28,7 +29,8 @@ export const GameOverMenu: React.FC<GameOverMenuProps> = ({
   coins,
   stats,
   onRevive, 
-  onRestart 
+  onRestart,
+  onExit
 }) => {
   const [username, setUsername] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -123,6 +125,14 @@ export const GameOverMenu: React.FC<GameOverMenuProps> = ({
             onClick={onRestart}
           >
             Reiniciar Misión
+          </GameButton>
+          
+          <GameButton 
+            variant="secondary" 
+            className="w-full"
+            onClick={onExit}
+          >
+            Salir al Menú
           </GameButton>
         </div>
       </motion.div>

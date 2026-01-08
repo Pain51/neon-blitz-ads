@@ -1372,7 +1372,7 @@ export default function Game() {
           )}
           {uiState.isGameOver && (
             <motion.div key="game-over" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <GameOverMenu score={uiState.score} level={uiState.level} revivesLeft={uiState.revivesLeft} coins={uiState.coins} stats={uiState.stats} onRevive={handleRevive} onRestart={() => window.location.reload()} />
+              <GameOverMenu score={uiState.score} level={uiState.level} revivesLeft={uiState.revivesLeft} coins={uiState.coins} stats={uiState.stats} onRevive={handleRevive} onRestart={() => window.location.reload()} onExit={() => setLocation('/')} />
             </motion.div>
           )}
           {achievementNotification && (
