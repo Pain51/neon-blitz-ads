@@ -15,6 +15,26 @@ export default function Home() {
   const [selectedSkin, setSelectedSkin] = React.useState<'pink' | 'cyan' | 'yellow' | 'green'>('pink');
   const [showPermanentUpgrades, setShowPermanentUpgrades] = React.useState(false);
   const [showWeaponSelection, setShowWeaponSelection] = React.useState(false);
+  const [showAchievements, setShowAchievements] = React.useState(false);
+
+  const ALL_ACHIEVEMENTS = [
+    { id: 'first_blood', name: 'First Blood', description: 'Derrota a tu primer enemigo', icon: '1' },
+    { id: 'survivor_5', name: 'Survivor', description: 'Alcanza el nivel 5', icon: '5' },
+    { id: 'survivor_10', name: 'Elite Survivor', description: 'Alcanza el nivel 10', icon: '10' },
+    { id: 'boss_slayer', name: 'Boss Slayer', description: 'Derrota a un jefe', icon: 'B' },
+    { id: 'score_1k', name: 'Point Hunter', description: 'Consigue 1,000 puntos', icon: '1K' },
+    { id: 'score_10k', name: 'Score Master', description: 'Consigue 10,000 puntos', icon: '10K' },
+    { id: 'powerup_5', name: 'Power Collector', description: 'Recoge 5 power-ups en una partida', icon: 'P' },
+    { id: 'no_damage', name: 'Untouchable', description: 'Completa un nivel sin recibir daño', icon: 'U' },
+  ];
+
+  const [unlockedAchievements, setUnlockedAchievements] = React.useState<string[]>(() => {
+    const saved = localStorage.getItem('achievements');
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    // Convert object map {id: true} to array of ids
+    return Object.keys(parsed).filter(key => parsed[key]);
+  });
 
   const SKINS = {
     pink: { name: 'Pink Ace', color: '#ec4899', shape: 'triangle' },
@@ -91,6 +111,50 @@ export default function Home() {
                     {weapon === w.id && <Star className="w-5 h-5 fill-current" />}
                   </button>
                 ))}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Achievements Modal */}
+      <AnimatePresence>
+        {showAchievements && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="w-full max-w-md bg-zinc-900 border-2 border-yellow-500 rounded-xl p-6 max-h-[80vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-arcade text-yellow-500">LOGROS</h2>
+                <button onClick={() => setShowAchievements(false)} className="text-white hover:text-primary">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="mb-4 text-center">
+                <span className="text-yellow-500 font-arcade">{unlockedAchievements.length} / {ALL_ACHIEVEMENTS.length}</span>
+              </div>
+              <div className="grid gap-3">
+                {ALL_ACHIEVEMENTS.map(ach => {
+                  const isUnlocked = unlockedAchievements.includes(ach.id);
+                  return (
+                    <div
+                      key={ach.id}
+                      className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${isUnlocked ? 'bg-yellow-900/30 border-yellow-500/50' : 'bg-white/5 border-white/10 opacity-50'}`}
+                    >
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-arcade text-sm ${isUnlocked ? 'bg-yellow-500 text-black' : 'bg-gray-700 text-gray-500'}`}>
+                        {isUnlocked ? <Trophy className="w-5 h-5" /> : '?'}
+                      </div>
+                      <div className="flex-1">
+                        <div className={`font-bold text-sm ${isUnlocked ? 'text-white' : 'text-gray-500'}`}>{ach.name}</div>
+                        <div className="text-xs text-gray-400">{ach.description}</div>
+                      </div>
+                      {isUnlocked && <Star className="w-4 h-4 text-yellow-500" />}
+                    </div>
+                  );
+                })}
               </div>
             </motion.div>
           </div>
@@ -223,14 +287,24 @@ export default function Home() {
             INICIAR MISIÓN
           </GameButton>
 
-          <div className="grid grid-cols-2 gap-4 w-full">
+          <div className="grid grid-cols-3 gap-4 w-full">
             <button 
               onClick={() => setShowPermanentUpgrades(true)}
               className="p-4 bg-black/40 rounded border border-white/5 flex flex-col items-center text-center hover:bg-white/10 transition-colors"
+              data-testid="button-upgrades"
             >
               <Star className="w-8 h-8 text-yellow-500 mb-2" />
               <span className="text-xs text-muted-foreground uppercase font-bold">Mejoras</span>
               <span className="text-sm font-bold text-yellow-500">PERMANENTES</span>
+            </button>
+            <button 
+              onClick={() => setShowAchievements(true)}
+              className="p-4 bg-black/40 rounded border border-white/5 flex flex-col items-center text-center hover:bg-white/10 transition-colors"
+              data-testid="button-achievements"
+            >
+              <Trophy className="w-8 h-8 text-yellow-500 mb-2" />
+              <span className="text-xs text-muted-foreground uppercase font-bold">Logros</span>
+              <span className="text-sm font-bold text-yellow-500">{unlockedAchievements.length}/{ALL_ACHIEVEMENTS.length}</span>
             </button>
             <div className="p-4 bg-black/40 rounded border border-white/5 flex flex-col items-center text-center">
               <div className="flex flex-wrap gap-1 justify-center mt-1">

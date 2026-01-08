@@ -1152,26 +1152,49 @@ export default function Game() {
           </div>
         )}
         
-        <div 
-          className={`absolute transform scale-[0.6] md:scale-100 origin-bottom-left z-30 ${editingJoysticks ? 'cursor-move ring-2 ring-green-500 rounded-full' : ''}`}
-          style={{ left: joystickPositions.move.x, bottom: joystickPositions.move.y }}
-          onTouchStart={() => handleJoystickDragStart('move')}
-          onMouseDown={() => handleJoystickDragStart('move')}
-        > 
-          <Joystick size={120} onMove={editingJoysticks ? () => {} : handleMoveJoystick} label="MOVER" /> 
-        </div>
-        <div 
-          className={`absolute transform scale-[0.6] md:scale-100 origin-bottom-right z-30 ${editingJoysticks ? 'cursor-move ring-2 ring-green-500 rounded-full' : ''}`}
-          style={{ right: joystickPositions.shoot.x, bottom: joystickPositions.shoot.y }}
-          onTouchStart={() => handleJoystickDragStart('shoot')}
-          onMouseDown={() => handleJoystickDragStart('shoot')}
-        > 
-          <Joystick size={120} onMove={editingJoysticks ? () => {} : handleShootJoystick} label="DISPARAR" /> 
-        </div>
+        {editingJoysticks ? (
+          <>
+            <div 
+              className="absolute transform scale-[0.6] md:scale-100 origin-bottom-left z-30 cursor-move ring-2 ring-green-500 rounded-full"
+              style={{ left: joystickPositions.move.x, bottom: joystickPositions.move.y }}
+              onTouchStart={() => handleJoystickDragStart('move')}
+              onMouseDown={() => handleJoystickDragStart('move')}
+            > 
+              <div className="pointer-events-none">
+                <Joystick size={120} onMove={() => {}} label="MOVER" />
+              </div>
+            </div>
+            <div 
+              className="absolute transform scale-[0.6] md:scale-100 origin-bottom-right z-30 cursor-move ring-2 ring-green-500 rounded-full"
+              style={{ right: joystickPositions.shoot.x, bottom: joystickPositions.shoot.y }}
+              onTouchStart={() => handleJoystickDragStart('shoot')}
+              onMouseDown={() => handleJoystickDragStart('shoot')}
+            > 
+              <div className="pointer-events-none">
+                <Joystick size={120} onMove={() => {}} label="DISPARAR" />
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div 
+              className="absolute transform scale-[0.6] md:scale-100 origin-bottom-left z-30"
+              style={{ left: joystickPositions.move.x, bottom: joystickPositions.move.y }}
+            > 
+              <Joystick size={120} onMove={handleMoveJoystick} label="MOVER" />
+            </div>
+            <div 
+              className="absolute transform scale-[0.6] md:scale-100 origin-bottom-right z-30"
+              style={{ right: joystickPositions.shoot.x, bottom: joystickPositions.shoot.y }}
+            > 
+              <Joystick size={120} onMove={handleShootJoystick} label="DISPARAR" />
+            </div>
+          </>
+        )}
 
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {uiState.showTempSkills && (
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <motion.div key="temp-skills" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
               <div className="bg-gray-900 border-4 border-blue-500 p-6 rounded-xl max-w-md w-full shadow-[0_0_30px_rgba(59,130,246,0.5)]">
                 <h2 className="text-2xl text-blue-400 mb-2 text-center">¡SUBIDA DE NIVEL!</h2>
                 <p className="text-xs text-gray-400 mb-6 text-center italic">Elige tu mejora de batalla</p>
@@ -1204,7 +1227,7 @@ export default function Game() {
             </motion.div>
           )}
           {uiState.isPaused && !uiState.showTempSkills && !uiState.isGameOver && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <motion.div key="pause-menu" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm">
               <div className="text-center p-8 bg-gray-900 border-2 border-white/20 rounded-2xl">
                 <h2 className="text-4xl mb-8">PAUSA</h2>
                 <button onClick={handlePauseToggle} className="px-8 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 transition-all">REANUDAR</button>
@@ -1218,10 +1241,13 @@ export default function Game() {
             </motion.div>
           )}
           {uiState.isGameOver && (
-            <GameOverMenu score={uiState.score} level={uiState.level} revivesLeft={uiState.revivesLeft} coins={uiState.coins} stats={uiState.stats} onRevive={handleRevive} onRestart={() => window.location.reload()} />
+            <motion.div key="game-over" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <GameOverMenu score={uiState.score} level={uiState.level} revivesLeft={uiState.revivesLeft} coins={uiState.coins} stats={uiState.stats} onRevive={handleRevive} onRestart={() => window.location.reload()} />
+            </motion.div>
           )}
           {achievementNotification && (
             <motion.div 
+              key={`achievement-${achievementNotification.id}`}
               initial={{ opacity: 0, y: -50 }} 
               animate={{ opacity: 1, y: 0 }} 
               exit={{ opacity: 0, y: -50 }} 
