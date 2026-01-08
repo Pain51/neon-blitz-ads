@@ -277,8 +277,8 @@ export default function Game() {
           });
           state.shootTimer = 0.05; // Fast firing laser
         } else if (weaponType === 'shotgun') {
-          for (let i = -2; i <= 2; i++) {
-            const spreadAngle = angle + (i * 0.2);
+          for (let i = -3; i <= 3; i++) {
+            const spreadAngle = angle + (i * 0.12);
             state.bullets.push({
               id: Math.random(),
               x: state.player.x, y: state.player.y,
