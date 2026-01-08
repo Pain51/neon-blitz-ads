@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pause, Star, X, Gamepad2, Trophy } from 'lucide-react';
-import { DPad } from '@/components/game/DPad';
+import { Pause, Star, Trophy, Volume2, VolumeX, X } from 'lucide-react';
 import { Joystick } from '@/components/game/Joystick';
 import { GameOverMenu } from '@/components/game/GameOverMenu';
+import { useGameAudio } from '@/hooks/useGameAudio';
 
 import enemyNormalImg from '@assets/generated_images/neon_red_pixel-art_enemy_drone.png';
 import enemySpecialImg from '@assets/generated_images/neon_purple_pixel-art_special_enemy.png';
@@ -114,6 +114,12 @@ export default function Game() {
     } as Record<string, number>,
   });
 
+  const { playSound, setEnabled: setAudioEnabled } = useGameAudio();
+  const playSoundRef = useRef(playSound);
+  playSoundRef.current = playSound;
+  
+  const [audioEnabled, setAudioEnabledState] = useState(true);
+  
   const [uiState, setUiState] = useState({
     score: 0,
     level: 1,
@@ -128,7 +134,7 @@ export default function Game() {
     revivesLeft: 3,
     coins: 0,
     skillPoints: 0,
-    controlType: 'dpad' as 'dpad' | 'joystick',
+    controlType: 'joystick',
     upgradeLevels: {} as Record<string, number>,
     tempSkills: {
       dmg: 0,
@@ -136,6 +142,12 @@ export default function Game() {
       speed: 0,
     } as Record<string, number>,
   });
+  
+  const toggleAudio = () => {
+    const newValue = !audioEnabled;
+    setAudioEnabledState(newValue);
+    setAudioEnabled(newValue);
+  };
 
   useEffect(() => {
     const normal = new Image();
@@ -274,6 +286,7 @@ export default function Game() {
         state.shootTimer = state.player.fireRate;
         const angle = shootAngle;
         const weaponType = new URLSearchParams(window.location.search).get('weapon') || 'normal';
+        playSoundRef.current('shoot');
 
         if (weaponType === 'laser') {
           state.bullets.push({
@@ -342,9 +355,11 @@ export default function Game() {
           state.player.hp -= (e.type === 'boss' ? 30 : 10);
           createExplosion(state.player.x, state.player.y, COLOR_PLAYER, 10);
           state.enemies.splice(i, 1);
+          playSoundRef.current('damage');
           if (state.player.hp <= 0) {
             state.player.hp = 0;
             state.isGameOver = true;
+            playSoundRef.current('gameOver');
             setUiState(s => ({ ...s, isGameOver: true }));
           }
           setUiState(s => ({ ...s, hp: state.player.hp }));
@@ -373,6 +388,7 @@ export default function Game() {
             if (e.hp <= 0) {
               state.enemies.splice(i, 1);
               state.score += e.xpValue! * 10;
+              playSoundRef.current('explosion');
               state.xpGems.push({
                 id: Math.random(),
                 x: e.x, y: e.y, vx:0, vy:0,
@@ -403,11 +419,13 @@ export default function Game() {
           const currentTotal = parseInt(localStorage.getItem('goldCoins') || '0');
           localStorage.setItem('goldCoins', (currentTotal + coinsEarned).toString());
           state.xpGems.splice(i, 1);
+          playSoundRef.current('gem');
           if (state.xp >= state.xpToNextLevel) {
             state.level++;
             state.xp -= state.xpToNextLevel;
             state.xpToNextLevel = Math.floor(state.xpToNextLevel * 1.5);
             state.isPaused = true;
+            playSoundRef.current('levelUp');
             setUiState(s => ({
               ...s,
               level: state.level,
@@ -646,6 +664,9 @@ export default function Game() {
               <div className="w-3 h-3 md:w-4 md:h-4 rounded-full bg-yellow-500 border border-yellow-300 shadow-[0_0_5px_#eab308]" />
             </div>
           </div>
+          <button onClick={toggleAudio} className="p-1 md:p-2 hover:bg-white/10 rounded-lg transition-colors border border-white/10">
+            {audioEnabled ? <Volume2 className="w-4 h-4 md:w-6 md:h-6" /> : <VolumeX className="w-4 h-4 md:w-6 md:h-6 text-gray-500" />}
+          </button>
           <button onClick={handlePauseToggle} className="p-1 md:p-2 hover:bg-white/10 rounded-lg transition-colors border border-white/10">
             <Pause className="w-4 h-4 md:w-6 md:h-6" />
           </button>
