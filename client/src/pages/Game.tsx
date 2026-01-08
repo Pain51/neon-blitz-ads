@@ -158,6 +158,13 @@ export default function Game() {
       powerupsCollected: 0,
       damageTakenThisLevel: 0,
     },
+    // Visual effects
+    screenShake: 0,
+    combo: 0,
+    comboTimer: 0,
+    damageNumbers: [] as { x: number; y: number; value: number; life: number; isCrit: boolean }[],
+    bulletTrails: [] as { x: number; y: number; life: number; color: string }[],
+    levelUpFlash: 0,
   });
 
   const { playSound, setEnabled: setAudioEnabled, startMusic, stopMusic } = useGameAudio();
@@ -336,6 +343,20 @@ export default function Game() {
         radius, hp, maxHp: hp, color, type, xpValue,
         zigzagTimer, shootTimer
       });
+      
+      // Spawn effect - ring of particles
+      const spawnParticleCount = type === 'boss' ? 20 : 6;
+      for (let i = 0; i < spawnParticleCount; i++) {
+        const angle = (i / spawnParticleCount) * Math.PI * 2;
+        state.particles.push({
+          x, y,
+          vx: Math.cos(angle) * 80,
+          vy: Math.sin(angle) * 80,
+          life: 0.4,
+          color: type === 'boss' ? '#fbbf24' : color,
+          size: type === 'boss' ? 4 : 2
+        });
+      }
     };
 
     const createExplosion = (x: number, y: number, color: string, count: number, intensity: number = 1) => {
@@ -434,6 +455,7 @@ export default function Game() {
             radius: 2, color: '#00ffff',
             hp: 1, maxHp: 1, pierce: 10
           });
+          state.bulletTrails.push({ x: state.player.x, y: state.player.y, life: 1, color: '#00ffff' });
           state.shootTimer = 0.05;
         } else if (weaponType === 'shotgun') {
           playSoundRef.current('shootShotgun');
@@ -449,6 +471,7 @@ export default function Game() {
               hp: 1, maxHp: 1, pierce: state.player.pierce
             });
           }
+          state.bulletTrails.push({ x: state.player.x, y: state.player.y, life: 1, color: '#f59e0b' });
           state.shootTimer = state.player.fireRate * 2;
         } else {
           playSoundRef.current('shootNormal');
@@ -461,6 +484,7 @@ export default function Game() {
             color: COLOR_BULLET,
             hp: 1, maxHp: 1, pierce: state.player.pierce
           });
+          state.bulletTrails.push({ x: state.player.x, y: state.player.y, life: 1, color: COLOR_BULLET });
         }
       }
 
@@ -581,10 +605,13 @@ export default function Game() {
             const dmg = e.type === 'boss' ? 30 : 10;
             state.player.hp -= dmg;
             state.stats.damageTakenThisLevel += dmg;
+            state.screenShake = e.type === 'boss' ? 15 : 8;
+            state.combo = 0;
             playSoundRef.current('damage');
             if (state.player.hp <= 0) {
               state.player.hp = 0;
               state.isGameOver = true;
+              state.screenShake = 25;
               playSoundRef.current('gameOver');
               setUiState(s => ({ ...s, isGameOver: true }));
             }
@@ -613,14 +640,33 @@ export default function Game() {
             const finalDamage = baseDamage + (perms.baseDmg * 0.5) + (uiState.tempSkills.dmg * 1);
             const isCrit = Math.random() < (uiState.tempSkills.crit * 0.05);
             
-            e.hp -= isCrit ? finalDamage * 2 : finalDamage;
+            const actualDamage = isCrit ? finalDamage * 2 : finalDamage;
+            e.hp -= actualDamage;
             b.pierce--;
             createExplosion(b.x, b.y, COLOR_BULLET, 3);
+            
+            // Damage number effect
+            state.damageNumbers.push({
+              x: e.x + (Math.random() - 0.5) * 20,
+              y: e.y - e.radius,
+              value: Math.round(actualDamage * 10),
+              life: 1.0,
+              isCrit
+            });
+            
             if (b.pierce <= 0) state.bullets.splice(j, 1);
             if (e.hp <= 0) {
               const wasBoss = e.type === 'boss';
               state.enemies.splice(i, 1);
-              state.score += e.xpValue! * 10;
+              
+              // Combo system
+              state.combo++;
+              state.comboTimer = 2.0;
+              const comboMultiplier = 1 + (state.combo * 0.1);
+              const baseScore = e.xpValue! * 10;
+              state.score += Math.floor(baseScore * comboMultiplier);
+              state.screenShake = wasBoss ? 12 : 3;
+              
               state.stats.enemiesKilled++;
               if (wasBoss) state.stats.bossesKilled++;
               
@@ -682,6 +728,8 @@ export default function Game() {
             state.xp -= state.xpToNextLevel;
             state.xpToNextLevel = Math.floor(state.xpToNextLevel * 1.5);
             state.isPaused = true;
+            state.levelUpFlash = 1.0;
+            state.screenShake = 10;
             playSoundRef.current('levelUp');
             stopMusicRef.current();
             setTimeout(() => playSoundRef.current('menuOpen'), 400);
@@ -794,6 +842,30 @@ export default function Game() {
           }
         });
       }
+      
+      // Update visual effects
+      if (state.screenShake > 0) state.screenShake *= 0.9;
+      if (state.screenShake < 0.5) state.screenShake = 0;
+      
+      if (state.comboTimer > 0) {
+        state.comboTimer -= dt;
+        if (state.comboTimer <= 0) state.combo = 0;
+      }
+      
+      if (state.levelUpFlash > 0) state.levelUpFlash -= dt * 2;
+      
+      // Update damage numbers
+      for (let i = state.damageNumbers.length - 1; i >= 0; i--) {
+        state.damageNumbers[i].life -= dt;
+        state.damageNumbers[i].y -= 40 * dt;
+        if (state.damageNumbers[i].life <= 0) state.damageNumbers.splice(i, 1);
+      }
+      
+      // Update bullet trails
+      for (let i = state.bulletTrails.length - 1; i >= 0; i--) {
+        state.bulletTrails[i].life -= dt * 3;
+        if (state.bulletTrails[i].life <= 0) state.bulletTrails.splice(i, 1);
+      }
     };
 
     const draw = () => {
@@ -810,9 +882,17 @@ export default function Game() {
       const playerColor = skinColors[skinId] || COLOR_PLAYER;
       const playerShape = skinShapes[skinId] || 'triangle';
       
+      // Screen shake effect
+      ctx.save();
+      if (state.screenShake > 0) {
+        const shakeX = (Math.random() - 0.5) * state.screenShake * 2;
+        const shakeY = (Math.random() - 0.5) * state.screenShake * 2;
+        ctx.translate(shakeX, shakeY);
+      }
+      
       // Draw neon grid background
       ctx.fillStyle = '#050508';
-      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      ctx.fillRect(-10, -10, CANVAS_WIDTH + 20, CANVAS_HEIGHT + 20);
       
       const gridSize = 50;
       const time = Date.now() * 0.001;
@@ -919,6 +999,59 @@ export default function Game() {
       state.particles.forEach(p => {
         ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
       });
+      
+      // Draw bullet trails (muzzle flash effect)
+      state.bulletTrails.forEach(t => {
+        ctx.globalAlpha = t.life * 0.6;
+        ctx.fillStyle = t.color;
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, 8 * t.life, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowColor = t.color;
+        ctx.shadowBlur = 15 * t.life;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+      });
+      
+      // Draw damage numbers
+      state.damageNumbers.forEach(dn => {
+        ctx.globalAlpha = dn.life;
+        ctx.font = dn.isCrit ? 'bold 16px Arial' : '12px Arial';
+        ctx.fillStyle = dn.isCrit ? '#fbbf24' : '#fff';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = dn.isCrit ? '#fbbf24' : '#000';
+        ctx.shadowBlur = 4;
+        ctx.fillText(dn.value.toString(), dn.x, dn.y);
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+      });
+      
+      // Draw combo indicator
+      if (state.combo > 1) {
+        ctx.globalAlpha = Math.min(1, state.comboTimer);
+        ctx.font = 'bold 24px Arial';
+        ctx.fillStyle = state.combo >= 10 ? '#ef4444' : state.combo >= 5 ? '#f59e0b' : '#22c55e';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = ctx.fillStyle;
+        ctx.shadowBlur = 10;
+        ctx.fillText(`${state.combo}x COMBO!`, CANVAS_WIDTH / 2, 50);
+        ctx.font = '14px Arial';
+        ctx.fillStyle = '#fff';
+        ctx.fillText(`+${Math.floor((state.combo - 1) * 10)}% bonus`, CANVAS_WIDTH / 2, 70);
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+      }
+      
+      // Level up flash effect
+      if (state.levelUpFlash > 0) {
+        ctx.globalAlpha = state.levelUpFlash * 0.3;
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        ctx.globalAlpha = 1;
+      }
+      
+      ctx.restore();
     };
 
     const loop = () => {
