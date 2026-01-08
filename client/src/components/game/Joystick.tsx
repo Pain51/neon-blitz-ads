@@ -35,7 +35,21 @@ export const Joystick: React.FC<JoystickProps> = ({ onDirectionChange }) => {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging) return;
-    handleMove(e.touches[0].clientX, e.touches[0].clientY, e.currentTarget as HTMLElement);
+    
+    // Find the touch associated with this specific joystick by checking all active touches
+    const rect = e.currentTarget.getBoundingClientRect();
+    const touch = Array.from(e.touches).find(t => {
+      // Allow some padding around the joystick for movement
+      const padding = 50;
+      return (
+        t.clientX >= rect.left - padding &&
+        t.clientX <= rect.right + padding &&
+        t.clientY >= rect.top - padding &&
+        t.clientY <= rect.bottom + padding
+      );
+    }) || e.touches[0];
+    
+    handleMove(touch.clientX, touch.clientY, e.currentTarget as HTMLElement);
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
