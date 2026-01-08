@@ -56,19 +56,24 @@ export default function Home() {
     return saved ? JSON.parse(saved) : {
       baseHp: 0,
       baseSpeed: 0,
-      baseDmg: 0
+      baseDmg: 0,
+      bulletFire: 0,
+      bulletIce: 0
     };
   });
+  const [upgradeTab, setUpgradeTab] = React.useState<'stats' | 'effects'>('stats');
 
   React.useEffect(() => {
     localStorage.setItem('permanentUpgrades', JSON.stringify(permUpgrades));
     localStorage.setItem('goldCoins', goldCoins.toString());
   }, [permUpgrades, goldCoins]);
 
-  const buyUpgrade = (key: string, cost: number) => {
+  const buyUpgrade = (key: string, cost: number, maxLevel?: number) => {
+    const currentLevel = (permUpgrades as any)[key] || 0;
+    if (maxLevel && currentLevel >= maxLevel) return;
     if (goldCoins >= cost) {
       setGoldCoins(c => c - cost);
-      setPermUpgrades((u: any) => ({ ...u, [key]: u[key] + 1 }));
+      setPermUpgrades((u: any) => ({ ...u, [key]: (u[key] || 0) + 1 }));
     }
   };
 
@@ -171,39 +176,88 @@ export default function Home() {
               exit={{ scale: 0.9, opacity: 0 }}
               className="w-full max-w-md bg-zinc-900 border-2 border-yellow-500 rounded-xl p-6"
             >
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-arcade text-yellow-500">MEJORAS PERMANENTES</h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-arcade text-yellow-500">MEJORAS</h2>
                 <button onClick={() => setShowPermanentUpgrades(false)} className="text-white hover:text-primary">
                   <X className="w-6 h-6" />
                 </button>
               </div>
               <div className="mb-4 text-center">
-                <span className="text-yellow-500 font-arcade">MONEDAS: {goldCoins}</span>
+                <span className="text-yellow-500 font-arcade text-sm">MONEDAS: {goldCoins}</span>
               </div>
-              <div className="grid gap-4">
-                {[
-                  { id: 'baseHp', label: 'Vida Base', cost: 100 },
-                  { id: 'baseSpeed', label: 'Velocidad Base', cost: 150 },
-                  { id: 'baseDmg', label: 'Daño Base', cost: 200 },
-                ].map(upg => {
-                  const level = (permUpgrades as any)[upg.id];
-                  const currentCost = upg.cost * (level + 1);
-                  return (
-                    <button
-                      key={upg.id}
-                      onClick={() => buyUpgrade(upg.id, currentCost)}
-                      disabled={goldCoins < currentCost}
-                      className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 disabled:opacity-50"
-                    >
-                      <div className="flex flex-col items-start">
-                        <span className="font-bold">{upg.label}</span>
-                        <span className="text-xs text-yellow-500">Costo: {currentCost}</span>
-                      </div>
-                      <span className="font-arcade text-xs">NVL {level}</span>
-                    </button>
-                  );
-                })}
+              
+              {/* Tabs */}
+              <div className="flex gap-2 mb-4">
+                <button 
+                  onClick={() => setUpgradeTab('stats')}
+                  className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${upgradeTab === 'stats' ? 'bg-yellow-500 text-black' : 'bg-white/10 text-white'}`}
+                >
+                  ESTADISTICAS
+                </button>
+                <button 
+                  onClick={() => setUpgradeTab('effects')}
+                  className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${upgradeTab === 'effects' ? 'bg-yellow-500 text-black' : 'bg-white/10 text-white'}`}
+                >
+                  EFECTOS
+                </button>
               </div>
+
+              {upgradeTab === 'stats' ? (
+                <div className="grid gap-3">
+                  {[
+                    { id: 'baseHp', label: 'Vida Base', cost: 100, desc: '+20 HP' },
+                    { id: 'baseSpeed', label: 'Velocidad', cost: 150, desc: '+20 Vel' },
+                    { id: 'baseDmg', label: 'Daño Base', cost: 200, desc: '+0.5 DMG' },
+                  ].map(upg => {
+                    const level = (permUpgrades as any)[upg.id] || 0;
+                    const currentCost = upg.cost * (level + 1);
+                    return (
+                      <button
+                        key={upg.id}
+                        onClick={() => buyUpgrade(upg.id, currentCost)}
+                        disabled={goldCoins < currentCost}
+                        className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 disabled:opacity-50"
+                      >
+                        <div className="flex flex-col items-start">
+                          <span className="font-bold text-sm">{upg.label}</span>
+                          <span className="text-[10px] text-gray-400">{upg.desc}</span>
+                          <span className="text-xs text-yellow-500">Costo: {currentCost}</span>
+                        </div>
+                        <span className="font-arcade text-xs">NVL {level}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  {[
+                    { id: 'bulletFire', label: 'FUEGO', cost: 500, desc: 'Quema enemigos (20% DMG/3s)', color: 'text-orange-500', maxLevel: 1 },
+                    { id: 'bulletIce', label: 'HIELO', cost: 500, desc: 'Ralentiza enemigos (60%/3s)', color: 'text-cyan-400', maxLevel: 1 },
+                  ].map(upg => {
+                    const level = (permUpgrades as any)[upg.id] || 0;
+                    const currentCost = upg.cost;
+                    const isMaxed = level >= upg.maxLevel;
+                    return (
+                      <button
+                        key={upg.id}
+                        onClick={() => !isMaxed && buyUpgrade(upg.id, currentCost, upg.maxLevel)}
+                        disabled={goldCoins < currentCost || isMaxed}
+                        className={`flex items-center justify-between p-4 border rounded-lg transition-all ${isMaxed ? 'bg-green-900/30 border-green-500/50' : 'bg-white/5 border-white/10 hover:bg-white/10'} disabled:opacity-50`}
+                      >
+                        <div className="flex flex-col items-start">
+                          <span className={`font-bold ${upg.color}`}>{upg.label}</span>
+                          <span className="text-[10px] text-gray-400">{upg.desc}</span>
+                          {!isMaxed && <span className="text-xs text-yellow-500">Costo: {currentCost}</span>}
+                        </div>
+                        <span className={`font-arcade text-xs ${isMaxed ? 'text-green-400' : ''}`}>
+                          {isMaxed ? 'ACTIVO' : 'COMPRAR'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  <p className="text-[10px] text-gray-500 text-center mt-2">Los efectos aplican a todas tus balas</p>
+                </div>
+              )}
             </motion.div>
           </div>
         )}

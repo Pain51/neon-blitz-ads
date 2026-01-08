@@ -41,10 +41,14 @@ interface Entity {
   id: number;
   zigzagTimer?: number;
   shootTimer?: number;
+  fireEffect?: number;
+  iceEffect?: number;
+  originalSpeed?: number;
 }
 
 interface Bullet extends Entity {
   pierce: number;
+  life?: number;
 }
 
 interface Particle {
@@ -130,6 +134,7 @@ export default function Game() {
       lastMoveAngle: 0,
       lastShootAngle: 0,
       regen: 0.5,
+      bulletLife: 1.0,
     },
 
     keys: { w: false, a: false, s: false, d: false },
@@ -208,6 +213,9 @@ export default function Game() {
       dmg: 0,
       crit: 0,
       speed: 0,
+      bulletSpeed: 0,
+      bulletLife: 0,
+      bulletSize: 0,
     } as Record<string, number>,
     stats: {
       enemiesKilled: 0,
@@ -453,7 +461,8 @@ export default function Game() {
             vx: Math.cos(angle) * state.player.bulletSpeed * 2,
             vy: Math.sin(angle) * state.player.bulletSpeed * 2,
             radius: 2, color: '#00ffff',
-            hp: 1, maxHp: 1, pierce: 10
+            hp: 1, maxHp: 1, pierce: 10,
+            life: state.player.bulletLife
           });
           state.bulletTrails.push({ x: state.player.x, y: state.player.y, life: 1, color: '#00ffff' });
           state.shootTimer = 0.05;
@@ -468,7 +477,8 @@ export default function Game() {
               vy: Math.sin(spreadAngle) * state.player.bulletSpeed,
               radius: state.player.bulletSize,
               color: COLOR_BULLET,
-              hp: 1, maxHp: 1, pierce: state.player.pierce
+              hp: 1, maxHp: 1, pierce: state.player.pierce,
+              life: state.player.bulletLife
             });
           }
           state.bulletTrails.push({ x: state.player.x, y: state.player.y, life: 1, color: '#f59e0b' });
@@ -482,7 +492,8 @@ export default function Game() {
             vy: Math.sin(angle) * state.player.bulletSpeed,
             radius: state.player.bulletSize,
             color: COLOR_BULLET,
-            hp: 1, maxHp: 1, pierce: state.player.pierce
+            hp: 1, maxHp: 1, pierce: state.player.pierce,
+            life: state.player.bulletLife
           });
           state.bulletTrails.push({ x: state.player.x, y: state.player.y, life: 1, color: COLOR_BULLET });
         }
@@ -492,6 +503,16 @@ export default function Game() {
         const b = state.bullets[i];
         b.x += b.vx * dt;
         b.y += b.vy * dt;
+        
+        // Bullet life (range) - only for player bullets
+        if (b.life !== undefined && b.pierce >= 0) {
+          b.life -= dt;
+          if (b.life <= 0) {
+            state.bullets.splice(i, 1);
+            continue;
+          }
+        }
+        
         if (b.x < 0 || b.x > CANVAS_WIDTH || b.y < 0 || b.y > CANVAS_HEIGHT) {
           state.bullets.splice(i, 1);
           continue;
@@ -596,6 +617,48 @@ export default function Game() {
             break;
         }
         
+        // Process fire effect (20% damage per second for 3 seconds)
+        if (e.fireEffect && e.fireEffect > 0) {
+          e.fireEffect -= dt;
+          const fireDamage = e.maxHp * 0.20 * dt / 3; // 20% over 3 seconds
+          e.hp -= fireDamage;
+          // Fire particles
+          if (Math.random() < 0.3) {
+            state.particles.push({
+              x: e.x + (Math.random() - 0.5) * e.radius,
+              y: e.y + (Math.random() - 0.5) * e.radius,
+              vx: (Math.random() - 0.5) * 30,
+              vy: -50 - Math.random() * 30,
+              life: 0.5 + Math.random() * 0.3,
+              color: Math.random() > 0.5 ? '#ff6600' : '#ffcc00',
+              size: 3 + Math.random() * 3
+            });
+          }
+          if (e.hp <= 0) {
+            createExplosion(e.x, e.y, '#ff6600', 15);
+            state.enemies.splice(i, 1);
+            state.combo++;
+            state.comboTimer = 2.0;
+            state.score += Math.floor(e.xpValue! * 10 * (1 + state.combo * 0.1));
+            state.stats.enemiesKilled++;
+            state.xpGems.push({
+              id: Math.random(),
+              x: e.x, y: e.y, vx:0, vy:0,
+              radius: XP_GEM_SIZE,
+              color: COLOR_XP,
+              hp: 1, maxHp: 1, xpValue: e.xpValue
+            });
+            setUiState(s => ({ ...s, score: state.score, stats: { ...state.stats } }));
+            continue;
+          }
+        }
+        
+        // Process ice effect (60% slow for 3 seconds)
+        if (e.iceEffect && e.iceEffect > 0) {
+          e.iceEffect -= dt;
+          speed *= 0.4; // 60% slow = 40% of original speed
+        }
+        
         e.x += moveX * speed * dt;
         e.y += moveY * speed * dt;
 
@@ -636,7 +699,7 @@ export default function Game() {
             if (weaponType === 'shotgun') baseDamage = 0.5;
 
             const saved = localStorage.getItem('permanentUpgrades');
-            const perms = saved ? JSON.parse(saved) : { baseDmg: 0 };
+            const perms = saved ? JSON.parse(saved) : { baseDmg: 0, bulletFire: 0, bulletIce: 0 };
             const finalDamage = baseDamage + (perms.baseDmg * 0.5) + (uiState.tempSkills.dmg * 1);
             const isCrit = Math.random() < (uiState.tempSkills.crit * 0.05);
             
@@ -644,6 +707,16 @@ export default function Game() {
             e.hp -= actualDamage;
             b.pierce--;
             createExplosion(b.x, b.y, COLOR_BULLET, 3);
+            
+            // Apply fire/ice effects from permanent upgrades
+            if (perms.bulletFire > 0) {
+              e.fireEffect = 3.0; // 3 seconds of burn
+              if (!e.originalSpeed) e.originalSpeed = 1;
+            }
+            if (perms.bulletIce > 0) {
+              e.iceEffect = 3.0; // 3 seconds of slow
+              if (!e.originalSpeed) e.originalSpeed = 1;
+            }
             
             // Damage number effect
             state.damageNumbers.push({
@@ -959,6 +1032,46 @@ export default function Game() {
       });
 
       state.enemies.forEach(e => {
+        // Draw fire aura effect
+        if (e.fireEffect && e.fireEffect > 0) {
+          ctx.globalAlpha = 0.4;
+          ctx.strokeStyle = '#ff6600';
+          ctx.lineWidth = 3;
+          ctx.shadowColor = '#ff6600';
+          ctx.shadowBlur = 15;
+          ctx.beginPath();
+          ctx.arc(e.x, e.y, e.radius + 5 + Math.sin(Date.now() / 100) * 2, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+          ctx.globalAlpha = 1;
+        }
+        
+        // Draw ice aura effect
+        if (e.iceEffect && e.iceEffect > 0) {
+          ctx.globalAlpha = 0.5;
+          ctx.strokeStyle = '#00d4ff';
+          ctx.lineWidth = 3;
+          ctx.shadowColor = '#00d4ff';
+          ctx.shadowBlur = 15;
+          ctx.beginPath();
+          ctx.arc(e.x, e.y, e.radius + 4, 0, Math.PI * 2);
+          ctx.stroke();
+          // Ice crystals
+          for (let i = 0; i < 4; i++) {
+            const angle = (i / 4) * Math.PI * 2 + Date.now() / 1000;
+            ctx.fillStyle = '#88eeff';
+            ctx.beginPath();
+            ctx.arc(
+              e.x + Math.cos(angle) * (e.radius + 8),
+              e.y + Math.sin(angle) * (e.radius + 8),
+              2, 0, Math.PI * 2
+            );
+            ctx.fill();
+          }
+          ctx.shadowBlur = 0;
+          ctx.globalAlpha = 1;
+        }
+        
         const img = e.type === 'boss' ? enemyBossImgRef.current : (e.type === 'special' ? enemySpecialImgRef.current : enemyNormalImgRef.current);
         if (img && img.complete && img.naturalWidth !== 0) {
           ctx.drawImage(img, e.x - e.radius, e.y - e.radius, e.radius * 2, e.radius * 2);
@@ -1328,28 +1441,38 @@ export default function Game() {
               <div className="bg-gray-900 border-4 border-blue-500 p-6 rounded-xl max-w-md w-full shadow-[0_0_30px_rgba(59,130,246,0.5)]">
                 <h2 className="text-2xl text-blue-400 mb-2 text-center">¡SUBIDA DE NIVEL!</h2>
                 <p className="text-xs text-gray-400 mb-6 text-center italic">Elige tu mejora de batalla</p>
-                <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-2">
                   {[
-                    { id: 'dmg', label: 'ATAQUE+', icon: '⚔️', desc: '+1 de Daño' },
-                    { id: 'crit', label: 'PROB. CRÍTICO', icon: '⚡', desc: '+5% Crítico' },
-                    { id: 'speed', label: 'AGILIDAD', icon: '💨', desc: '+10% Velocidad' }
-                  ].map(skill => (
+                    { id: 'dmg', label: 'ATAQUE+', desc: '+1 Daño' },
+                    { id: 'crit', label: 'CRITICO', desc: '+5% Prob.' },
+                    { id: 'speed', label: 'AGILIDAD', desc: '+10% Vel.' },
+                    { id: 'bulletSpeed', label: 'VEL. BALA', desc: '+15% Vel.' },
+                    { id: 'bulletLife', label: 'ALCANCE', desc: '+20% Rango' },
+                    { id: 'bulletSize', label: 'CALIBRE', desc: '+15% Tamaño', maxLevel: 5 }
+                  ].filter(skill => {
+                    if (skill.maxLevel && uiState.tempSkills[skill.id] >= skill.maxLevel) return false;
+                    return true;
+                  }).map(skill => (
                     <button key={skill.id} onClick={() => {
                       playSoundRef.current('menuSelect');
                       playSoundRef.current('menuClose');
+                      const newLevel = uiState.tempSkills[skill.id] + 1;
                       setUiState(s => ({
                         ...s, 
                         showTempSkills: false, isPaused: false, 
-                        tempSkills: { ...s.tempSkills, [skill.id]: s.tempSkills[skill.id] + 1 }
+                        tempSkills: { ...s.tempSkills, [skill.id]: newLevel }
                       }));
-                      gameState.current.isPaused = false;
+                      // Apply effects
+                      const state = gameState.current;
+                      if (skill.id === 'bulletSpeed') state.player.bulletSpeed *= 1.15;
+                      if (skill.id === 'bulletLife') state.player.bulletLife *= 1.2;
+                      if (skill.id === 'bulletSize') state.player.bulletSize *= 1.15;
+                      state.isPaused = false;
                       startMusicRef.current();
-                    }} className="w-full p-4 bg-gray-800 hover:bg-gray-700 border-2 border-white/10 hover:border-blue-400 rounded-lg flex items-center gap-4 transition-all">
-                      <span className="text-2xl">{skill.icon}</span>
-                      <div className="flex-1 text-left">
-                        <div className="text-sm font-bold">{skill.label}</div>
-                        <div className="text-[10px] text-gray-400">{skill.desc}</div>
-                      </div>
+                    }} className="p-3 bg-gray-800 hover:bg-gray-700 border-2 border-white/10 hover:border-blue-400 rounded-lg flex flex-col items-center gap-1 transition-all">
+                      <div className="text-xs font-bold">{skill.label}</div>
+                      <div className="text-[9px] text-gray-400">{skill.desc}</div>
+                      {skill.maxLevel && <div className="text-[8px] text-blue-400">Nvl {uiState.tempSkills[skill.id]}/{skill.maxLevel}</div>}
                     </button>
                   ))}
                 </div>
