@@ -13,6 +13,7 @@ export default function Home() {
   const [difficulty, setDifficulty] = React.useState<'easy' | 'medium' | 'hard' | 'extreme'>('medium');
   const [weapon, setWeapon] = React.useState<'normal' | 'laser' | 'shotgun'>('normal');
   const [showPermanentUpgrades, setShowPermanentUpgrades] = React.useState(false);
+  const [showWeaponSelection, setShowWeaponSelection] = React.useState(false);
 
   const startMission = () => {
     setLocation(`/game?difficulty=${difficulty}&weapon=${weapon}`);
@@ -45,26 +46,48 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {/* Weapon Selection */}
-      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 bg-black/40 p-4 rounded-xl border border-white/5 shadow-2xl">
-        <h3 className="text-xs font-arcade text-muted-foreground uppercase mb-2">Weapon System</h3>
-        <div className="flex gap-2">
-          {[
-            { id: 'normal', label: 'Classic', desc: 'Balanced' },
-            { id: 'laser', label: 'Laser', desc: '0.3 DMG / High Freq' },
-            { id: 'shotgun', label: 'Shotgun', desc: '0.5 DMG x 5' }
-          ].map(w => (
-            <button
-              key={w.id}
-              onClick={() => setWeapon(w.id as any)}
-              className={`p-2 rounded border transition-all flex flex-col items-center gap-1 ${weapon === w.id ? 'bg-primary border-primary text-white scale-105' : 'bg-black/40 border-white/10 text-muted-foreground hover:bg-white/5'}`}
+      {/* Weapon Selection Modal */}
+      <AnimatePresence>
+        {showWeaponSelection && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="w-full max-w-md bg-zinc-900 border-2 border-primary rounded-xl p-6"
             >
-              <span className="text-[10px] font-bold">{w.label}</span>
-              <span className="text-[8px] opacity-60 leading-none">{w.desc}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-arcade text-white">SELECT WEAPON</h2>
+                <button onClick={() => setShowWeaponSelection(false)} className="text-white hover:text-primary">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="grid gap-4">
+                {[
+                  { id: 'normal', label: 'Classic', desc: 'Balanced 2.0 DMG' },
+                  { id: 'laser', label: 'Laser', desc: 'High Frequency 0.3 DMG' },
+                  { id: 'shotgun', label: 'Shotgun', desc: '5 Bullets Spread 0.5 DMG' }
+                ].map(w => (
+                  <button
+                    key={w.id}
+                    onClick={() => {
+                      setWeapon(w.id as any);
+                      setShowWeaponSelection(false);
+                    }}
+                    className={`flex items-center justify-between p-4 rounded-lg border transition-all ${weapon === w.id ? 'bg-primary border-primary text-white scale-[1.02]' : 'bg-white/5 border-white/10 text-muted-foreground hover:bg-white/10'}`}
+                  >
+                    <div className="flex flex-col items-start text-left">
+                      <span className="font-bold text-lg">{w.label}</span>
+                      <span className="text-xs opacity-70">{w.desc}</span>
+                    </div>
+                    {weapon === w.id && <Star className="w-5 h-5 fill-current" />}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Permanent Upgrades Modal */}
       <AnimatePresence>
@@ -140,8 +163,22 @@ export default function Home() {
           initial={{ x: -50, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="flex flex-col gap-6 items-center justify-center bg-zinc-900/50 backdrop-blur-sm p-8 rounded-2xl border border-white/5 shadow-2xl"
+          className="flex flex-col gap-4 items-center justify-center bg-zinc-900/50 backdrop-blur-sm p-8 rounded-2xl border border-white/5 shadow-2xl"
         >
+          <button 
+            onClick={() => setShowWeaponSelection(true)}
+            className="w-full p-4 bg-primary/10 border border-primary/20 rounded-lg flex items-center justify-between hover:bg-primary/20 transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <Crosshair className="w-6 h-6 text-primary group-hover:rotate-90 transition-transform" />
+              <div className="flex flex-col items-start">
+                <span className="text-[10px] font-arcade text-primary">CURRENT WEAPON</span>
+                <span className="text-sm font-bold text-white uppercase">{weapon === 'normal' ? 'Classic' : weapon}</span>
+              </div>
+            </div>
+            <Star className="w-4 h-4 text-primary animate-pulse" />
+          </button>
+
           <GameButton 
             size="lg" 
             className="w-full h-20 text-xl flex items-center justify-center gap-4 group"
