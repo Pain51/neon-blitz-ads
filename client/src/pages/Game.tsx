@@ -85,7 +85,8 @@ export default function Game() {
       bulletSize: BULLET_SIZE_BASE,
       pierce: 1,
       angle: 0, // shooting angle
-      lastMoveAngle: 0, // for auto-aim direction if stationary
+      lastMoveAngle: 0, // direction for movement sprite
+      lastShootAngle: 0, // direction for shooting sprite
       regen: 0.5, // HP per second
     },
 
@@ -250,16 +251,14 @@ export default function Game() {
       // 2. Shooting
       state.shootTimer -= dt;
       if (state.shootTimer <= 0) {
-        let shootAngle = state.player.lastMoveAngle;
-        let isShooting = true;
-
+        let shootAngle = state.player.lastShootAngle || state.player.lastMoveAngle;
+        
         if (state.analogShoot.x !== 0 || state.analogShoot.y !== 0) {
           shootAngle = Math.atan2(state.analogShoot.y, state.analogShoot.x);
+          state.player.lastShootAngle = shootAngle;
         } else if (dx !== 0 || dy !== 0) {
           shootAngle = Math.atan2(dy, dx);
-        } else {
-          // If no input and no previous movement, maybe don't shoot?
-          // For now keep auto-firing in last direction
+          state.player.lastShootAngle = shootAngle;
         }
 
         state.shootTimer = state.player.fireRate;
@@ -524,13 +523,14 @@ export default function Game() {
       // Player
       ctx.fillStyle = COLOR_PLAYER;
       ctx.beginPath();
-      // Triangle ship
-      ctx.moveTo(state.player.x + Math.cos(state.player.lastMoveAngle) * state.player.radius, 
-                 state.player.y + Math.sin(state.player.lastMoveAngle) * state.player.radius);
-      ctx.lineTo(state.player.x + Math.cos(state.player.lastMoveAngle + 2.6) * state.player.radius, 
-                 state.player.y + Math.sin(state.player.lastMoveAngle + 2.6) * state.player.radius);
-      ctx.lineTo(state.player.x + Math.cos(state.player.lastMoveAngle - 2.6) * state.player.radius, 
-                 state.player.y + Math.sin(state.player.lastMoveAngle - 2.6) * state.player.radius);
+      // Triangle ship - use lastShootAngle for rotation
+      const drawAngle = state.player.lastShootAngle || state.player.lastMoveAngle;
+      ctx.moveTo(state.player.x + Math.cos(drawAngle) * state.player.radius, 
+                 state.player.y + Math.sin(drawAngle) * state.player.radius);
+      ctx.lineTo(state.player.x + Math.cos(drawAngle + 2.6) * state.player.radius, 
+                 state.player.y + Math.sin(drawAngle + 2.6) * state.player.radius);
+      ctx.lineTo(state.player.x + Math.cos(drawAngle - 2.6) * state.player.radius, 
+                 state.player.y + Math.sin(drawAngle - 2.6) * state.player.radius);
       ctx.fill();
       
       // Glow
