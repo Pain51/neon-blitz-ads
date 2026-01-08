@@ -458,6 +458,25 @@ export default function Game() {
 
     const draw = () => {
       const state = gameState.current;
+      const params = new URLSearchParams(window.location.search);
+      const skinId = params.get('skin') || 'pink';
+      
+      const skinColors: Record<string, string> = {
+        pink: '#ec4899',
+        cyan: '#06b6d4',
+        yellow: '#eab308',
+        green: '#22c55e'
+      };
+      
+      const skinShapes: Record<string, 'triangle' | 'diamond' | 'circle'> = {
+        pink: 'triangle',
+        cyan: 'diamond',
+        yellow: 'circle',
+        green: 'triangle'
+      };
+
+      const playerColor = skinColors[skinId] || COLOR_PLAYER;
+      const playerShape = skinShapes[skinId] || 'triangle';
       
       // Clear
       ctx.fillStyle = '#0a0a0a';
@@ -521,20 +540,35 @@ export default function Game() {
       });
 
       // Player
-      ctx.fillStyle = COLOR_PLAYER;
+      ctx.fillStyle = playerColor;
       ctx.beginPath();
       // Triangle ship - use lastShootAngle for rotation
       const drawAngle = state.player.lastShootAngle || state.player.lastMoveAngle;
-      ctx.moveTo(state.player.x + Math.cos(drawAngle) * state.player.radius, 
-                 state.player.y + Math.sin(drawAngle) * state.player.radius);
-      ctx.lineTo(state.player.x + Math.cos(drawAngle + 2.6) * state.player.radius, 
-                 state.player.y + Math.sin(drawAngle + 2.6) * state.player.radius);
-      ctx.lineTo(state.player.x + Math.cos(drawAngle - 2.6) * state.player.radius, 
-                 state.player.y + Math.sin(drawAngle - 2.6) * state.player.radius);
+      
+      if (playerShape === 'triangle') {
+        ctx.moveTo(state.player.x + Math.cos(drawAngle) * state.player.radius, 
+                   state.player.y + Math.sin(drawAngle) * state.player.radius);
+        ctx.lineTo(state.player.x + Math.cos(drawAngle + 2.6) * state.player.radius, 
+                   state.player.y + Math.sin(drawAngle + 2.6) * state.player.radius);
+        ctx.lineTo(state.player.x + Math.cos(drawAngle - 2.6) * state.player.radius, 
+                   state.player.y + Math.sin(drawAngle - 2.6) * state.player.radius);
+      } else if (playerShape === 'diamond') {
+        ctx.moveTo(state.player.x + Math.cos(drawAngle) * state.player.radius * 1.2, 
+                   state.player.y + Math.sin(drawAngle) * state.player.radius * 1.2);
+        ctx.lineTo(state.player.x + Math.cos(drawAngle + Math.PI/2) * state.player.radius * 0.8, 
+                   state.player.y + Math.sin(drawAngle + Math.PI/2) * state.player.radius * 0.8);
+        ctx.lineTo(state.player.x + Math.cos(drawAngle + Math.PI) * state.player.radius * 0.8, 
+                   state.player.y + Math.sin(drawAngle + Math.PI) * state.player.radius * 0.8);
+        ctx.lineTo(state.player.x + Math.cos(drawAngle - Math.PI/2) * state.player.radius * 0.8, 
+                   state.player.y + Math.sin(drawAngle - Math.PI/2) * state.player.radius * 0.8);
+      } else {
+        ctx.arc(state.player.x, state.player.y, state.player.radius, 0, Math.PI * 2);
+      }
+      
       ctx.fill();
       
       // Glow
-      ctx.shadowColor = COLOR_PLAYER;
+      ctx.shadowColor = playerColor;
       ctx.shadowBlur = 15;
       ctx.fill();
       ctx.shadowBlur = 0;

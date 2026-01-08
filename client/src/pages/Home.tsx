@@ -12,11 +12,19 @@ export default function Home() {
 
   const [difficulty, setDifficulty] = React.useState<'easy' | 'medium' | 'hard' | 'extreme'>('medium');
   const [weapon, setWeapon] = React.useState<'normal' | 'laser' | 'shotgun'>('normal');
+  const [selectedSkin, setSelectedSkin] = React.useState<'pink' | 'cyan' | 'yellow' | 'green'>('pink');
   const [showPermanentUpgrades, setShowPermanentUpgrades] = React.useState(false);
   const [showWeaponSelection, setShowWeaponSelection] = React.useState(false);
 
+  const SKINS = {
+    pink: { name: 'Pink Ace', color: '#ec4899', shape: 'triangle' },
+    cyan: { name: 'Cyan Bolt', color: '#06b6d4', shape: 'diamond' },
+    yellow: { name: 'Gold Rush', color: '#eab308', shape: 'circle' },
+    green: { name: 'Neon Leaf', color: '#22c55e', shape: 'triangle' },
+  };
+
   const startMission = () => {
-    setLocation(`/game?difficulty=${difficulty}&weapon=${weapon}`);
+    setLocation(`/game?difficulty=${difficulty}&weapon=${weapon}&skin=${selectedSkin}`);
   };
 
   const [goldCoins, setGoldCoins] = React.useState(() => {
@@ -178,6 +186,33 @@ export default function Home() {
             </div>
             <Star className="w-4 h-4 text-primary animate-pulse" />
           </button>
+
+          {/* Skin Selection */}
+          <div className="w-full space-y-2 mt-2">
+            <span className="text-[10px] font-arcade text-muted-foreground ml-1">SELECT CHARACTER</span>
+            <div className="flex gap-2 w-full">
+              {Object.entries(SKINS).map(([id, skin]) => (
+                <button
+                  key={id}
+                  onClick={() => setSelectedSkin(id as any)}
+                  className={`flex-1 aspect-square rounded-lg border-2 transition-all flex items-center justify-center p-2 ${selectedSkin === id ? 'bg-white/10 border-primary scale-105' : 'bg-black/40 border-white/5 opacity-40 hover:opacity-100'}`}
+                >
+                  <div 
+                    className="w-full h-full" 
+                    style={{ 
+                      backgroundColor: skin.color,
+                      clipPath: skin.shape === 'triangle' 
+                        ? 'polygon(50% 0%, 0% 100%, 100% 100%)' 
+                        : skin.shape === 'diamond'
+                          ? 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)'
+                          : 'none',
+                      borderRadius: skin.shape === 'circle' ? '50%' : '2px'
+                    }}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
 
           <GameButton 
             size="lg" 
