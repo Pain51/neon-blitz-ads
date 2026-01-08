@@ -38,15 +38,15 @@ export const GameOverMenu: React.FC<GameOverMenuProps> = ({
         animate={{ y: 0, opacity: 1 }}
         className="w-full max-w-sm text-center"
       >
-        <h2 className="text-4xl font-arcade text-destructive mb-2 text-shadow-neon">GAME OVER</h2>
+        <h2 className="text-4xl font-arcade text-destructive mb-2 text-shadow-neon">FIN DEL JUEGO</h2>
         <div className="bg-zinc-900/80 border border-white/10 rounded-xl p-6 mb-6">
           <div className="mb-4">
-            <p className="text-muted-foreground uppercase text-xs font-bold tracking-widest mb-1">Final Score</p>
+            <p className="text-muted-foreground uppercase text-xs font-bold tracking-widest mb-1">Puntaje Final</p>
             <p className="text-4xl font-mono font-bold text-white">{score.toLocaleString()}</p>
           </div>
           
           <div className="mb-6">
-            <p className="text-muted-foreground uppercase text-xs font-bold tracking-widest mb-1">Level Reached</p>
+            <p className="text-muted-foreground uppercase text-xs font-bold tracking-widest mb-1">Nivel Alcanzado</p>
             <p className="text-xl font-mono text-secondary">{level}</p>
           </div>
 
@@ -55,7 +55,7 @@ export const GameOverMenu: React.FC<GameOverMenuProps> = ({
               <input 
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="ENTER INITIALS"
+                placeholder="TUS INICIALES"
                 maxLength={3}
                 className="flex-1 bg-black border border-white/20 rounded px-3 py-2 text-center uppercase font-mono text-white placeholder:text-zinc-700 focus:border-primary focus:outline-none"
               />
@@ -64,12 +64,12 @@ export const GameOverMenu: React.FC<GameOverMenuProps> = ({
                 disabled={isPending || !username}
                 className="bg-primary text-primary-foreground px-3 py-2 rounded font-bold disabled:opacity-50"
               >
-                {isPending ? <Loader2 className="animate-spin w-5 h-5" /> : 'SAVE'}
+                {isPending ? <Loader2 className="animate-spin w-5 h-5" /> : 'GUARDAR'}
               </button>
             </div>
           ) : (
             <div className="flex items-center justify-center gap-2 text-green-400 font-bold bg-green-900/20 py-2 rounded">
-              <Trophy className="w-4 h-4" /> Score Saved!
+              <Trophy className="w-4 h-4" /> ¡Puntaje Guardado!
             </div>
           )}
         </div>
@@ -81,7 +81,7 @@ export const GameOverMenu: React.FC<GameOverMenuProps> = ({
               className="w-full"
               onClick={onRevive}
             >
-              Revive ({revivesLeft} Left)
+              Revivir ({revivesLeft} restantes)
             </GameButton>
           )}
           
@@ -90,7 +90,7 @@ export const GameOverMenu: React.FC<GameOverMenuProps> = ({
             className="w-full"
             onClick={onRestart}
           >
-            Restart Mission
+            Reiniciar Misión
           </GameButton>
         </div>
       </motion.div>

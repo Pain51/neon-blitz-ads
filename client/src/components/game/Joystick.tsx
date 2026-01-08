@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 
 interface JoystickProps {
-  onDirectionChange: (dx: number, dy: number) => void;
+  onMove: (dx: number, dy: number) => void;
+  onDirectionChange?: (dx: number, dy: number) => void;
+  size?: number;
+  label?: string;
 }
 
-export const Joystick: React.FC<JoystickProps> = ({ onDirectionChange }) => {
+export const Joystick: React.FC<JoystickProps> = ({ onMove, onDirectionChange, size = 120, label }) => {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const size = 120;
-  const knobSize = 40;
+  const knobSize = size / 3;
   const radius = size / 2;
 
   const handleMove = (clientX: number, clientY: number, target: HTMLElement) => {
@@ -29,10 +31,9 @@ export const Joystick: React.FC<JoystickProps> = ({ onDirectionChange }) => {
     const normalizedX = dx / maxRadius;
     const normalizedY = dy / maxRadius;
 
-    // Use requestAnimationFrame to sync state update with screen refresh
-    // and minimize perceived input lag
     setPosition({ x: dx, y: dy });
-    onDirectionChange(normalizedX, normalizedY);
+    onMove(normalizedX, normalizedY);
+    if (onDirectionChange) onDirectionChange(normalizedX, normalizedY);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -62,26 +63,30 @@ export const Joystick: React.FC<JoystickProps> = ({ onDirectionChange }) => {
   const handleTouchEnd = () => {
     setIsDragging(false);
     setPosition({ x: 0, y: 0 });
-    onDirectionChange(0, 0);
+    onMove(0, 0);
+    if (onDirectionChange) onDirectionChange(0, 0);
   };
 
   return (
-    <div 
-      className="relative rounded-full bg-muted/30 backdrop-blur-sm border-2 border-primary/20 touch-none select-none"
-      style={{ width: size, height: size }}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
+    <div className="flex flex-col items-center gap-2">
+      {label && <span className="text-[10px] text-white/50 font-press-start uppercase">{label}</span>}
       <div 
-        className="absolute rounded-full bg-primary shadow-lg shadow-primary/40 transition-transform duration-75"
-        style={{ 
-          width: knobSize, 
-          height: knobSize,
-          left: radius - knobSize / 2 + position.x,
-          top: radius - knobSize / 2 + position.y
-        }}
-      />
+        className="relative rounded-full bg-muted/30 backdrop-blur-sm border-2 border-primary/20 touch-none select-none"
+        style={{ width: size, height: size }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div 
+          className="absolute rounded-full bg-primary shadow-lg shadow-primary/40 transition-transform duration-75"
+          style={{ 
+            width: knobSize, 
+            height: knobSize,
+            left: radius - knobSize / 2 + position.x,
+            top: radius - knobSize / 2 + position.y
+          }}
+        />
+      </div>
     </div>
   );
 };

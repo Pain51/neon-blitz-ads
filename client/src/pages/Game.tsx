@@ -631,11 +631,11 @@ export default function Game() {
         <div className="flex flex-col items-center gap-2 flex-1 max-w-xs px-4">
           <div className="w-full h-4 bg-gray-800 rounded-full border-2 border-white/20 relative overflow-hidden">
             <div className="h-full bg-blue-500 shadow-[0_0_10px_#3b82f6] transition-all duration-300" style={{ width: `${(uiState.xp / uiState.xpToNextLevel) * 100}%` }} />
-            <span className="absolute inset-0 flex items-center justify-center text-[8px] uppercase tracking-wider font-bold">XP NEXT: {uiState.xpToNextLevel - uiState.xp}</span>
+            <span className="absolute inset-0 flex items-center justify-center text-[8px] uppercase tracking-wider font-bold">SIGUIENTE XP: {uiState.xpToNextLevel - uiState.xp}</span>
           </div>
           <div className="w-full h-4 bg-gray-800 rounded-full border-2 border-white/20 relative overflow-hidden">
             <div className="h-full bg-red-500 shadow-[0_0_10px_#ef4444] transition-all duration-300" style={{ width: `${(uiState.hp / uiState.maxHp) * 100}%` }} />
-            <span className="absolute inset-0 flex items-center justify-center text-[8px] uppercase tracking-wider font-bold">HP: {Math.ceil(uiState.hp)}/{uiState.maxHp}</span>
+            <span className="absolute inset-0 flex items-center justify-center text-[8px] uppercase tracking-wider font-bold">VIDA: {Math.ceil(uiState.hp)}/{uiState.maxHp}</span>
           </div>
         </div>
 
@@ -656,23 +656,23 @@ export default function Game() {
         <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} className="max-w-full max-h-full border-2 border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.5)]" />
         
         {uiState.controlType === 'dpad' ? (
-          <div className="absolute bottom-8 left-8"> <DPad onMove={handleMoveJoystick} /> </div>
+          <div className="absolute bottom-8 left-8"> <DPad onDirectionChange={handleMoveJoystick} /> </div>
         ) : (
-          <div className="absolute bottom-16 left-16"> <Joystick size={120} onMove={handleMoveJoystick} label="MOVE" /> </div>
+          <div className="absolute bottom-16 left-16"> <Joystick size={120} onMove={handleMoveJoystick} label="MOVER" /> </div>
         )}
-        <div className="absolute bottom-16 right-16"> <Joystick size={120} onMove={handleShootJoystick} label="SHOOT" /> </div>
+        <div className="absolute bottom-16 right-16"> <Joystick size={120} onMove={handleShootJoystick} label="DISPARAR" /> </div>
 
         <AnimatePresence>
           {uiState.showTempSkills && (
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
               <div className="bg-gray-900 border-4 border-blue-500 p-6 rounded-xl max-w-md w-full shadow-[0_0_30px_rgba(59,130,246,0.5)]">
-                <h2 className="text-2xl text-blue-400 mb-2 text-center">LEVEL UP!</h2>
-                <p className="text-xs text-gray-400 mb-6 text-center italic">Choose your battle enhancement</p>
+                <h2 className="text-2xl text-blue-400 mb-2 text-center">¡SUBIDA DE NIVEL!</h2>
+                <p className="text-xs text-gray-400 mb-6 text-center italic">Elige tu mejora de batalla</p>
                 <div className="space-y-4">
                   {[
-                    { id: 'dmg', label: 'ATTACK UP', icon: '⚔️', desc: '+1 Damage' },
-                    { id: 'crit', label: 'CRIT CHANCE', icon: '⚡', desc: '+5% Crit' },
-                    { id: 'speed', label: 'AGILITY', icon: '💨', desc: '+10% Speed' }
+                    { id: 'dmg', label: 'ATAQUE+', icon: '⚔️', desc: '+1 de Daño' },
+                    { id: 'crit', label: 'PROB. CRÍTICO', icon: '⚡', desc: '+5% Crítico' },
+                    { id: 'speed', label: 'AGILIDAD', icon: '💨', desc: '+10% Velocidad' }
                   ].map(skill => (
                     <button key={skill.id} onClick={() => {
                       setUiState(s => ({
@@ -696,8 +696,8 @@ export default function Game() {
           {uiState.isPaused && !uiState.showTempSkills && !uiState.isGameOver && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm">
               <div className="text-center p-8 bg-gray-900 border-2 border-white/20 rounded-2xl">
-                <h2 className="text-4xl mb-8">PAUSED</h2>
-                <button onClick={handlePauseToggle} className="px-8 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 transition-all">RESUME</button>
+                <h2 className="text-4xl mb-8">PAUSA</h2>
+                <button onClick={handlePauseToggle} className="px-8 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm border-b-4 border-blue-800 active:border-b-0 active:translate-y-1 transition-all">REANUDAR</button>
                 <div className="mt-8 grid grid-cols-2 gap-4">
                   <button onClick={() => setUiState(s => ({ ...s, controlType: s.controlType === 'dpad' ? 'joystick' : 'dpad' }))} className="p-4 bg-gray-800 rounded-lg border border-white/10 flex flex-col items-center gap-2">
                     <Gamepad2 className="w-6 h-6" />
@@ -705,7 +705,7 @@ export default function Game() {
                   </button>
                   <button onClick={() => setLocation('/')} className="p-4 bg-gray-800 rounded-lg border border-white/10 flex flex-col items-center gap-2">
                     <X className="w-6 h-6" />
-                    <span className="text-[10px]">EXIT</span>
+                    <span className="text-[10px]">SALIR</span>
                   </button>
                 </div>
               </div>
@@ -718,7 +718,7 @@ export default function Game() {
       </main>
 
       <footer className="p-2 border-t border-white/10 bg-black text-[10px] flex justify-between text-gray-500 uppercase tracking-widest">
-        <span>WASD / ARROWS TO MOVE • MOUSE / JOYSTICK TO SHOOT</span>
+        <span>WASD / FLECHAS PARA MOVER • RATÓN / JOYSTICK PARA DISPARAR</span>
         <span>© 2026 NEON BLITZ v1.0</span>
       </footer>
     </div>

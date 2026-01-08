@@ -65,16 +65,16 @@ export default function Home() {
               className="w-full max-w-md bg-zinc-900 border-2 border-primary rounded-xl p-6"
             >
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-arcade text-white">SELECT WEAPON</h2>
+                <h2 className="text-2xl font-arcade text-white">SELECCIONAR ARMA</h2>
                 <button onClick={() => setShowWeaponSelection(false)} className="text-white hover:text-primary">
                   <X className="w-6 h-6" />
                 </button>
               </div>
               <div className="grid gap-4">
                 {[
-                  { id: 'normal', label: 'Classic', desc: 'Balanced 2.0 DMG' },
-                  { id: 'laser', label: 'Laser', desc: 'High Frequency 0.3 DMG' },
-                  { id: 'shotgun', label: 'Shotgun', desc: '5 Bullets Spread 0.5 DMG' }
+                  { id: 'normal', label: 'Clásica', desc: 'Equilibrada 2.0 DMG' },
+                  { id: 'laser', label: 'Láser', desc: 'Alta Frecuencia 0.3 DMG' },
+                  { id: 'shotgun', label: 'Escopeta', desc: '5 Balas Dispersas 0.5 DMG' }
                 ].map(w => (
                   <button
                     key={w.id}
@@ -108,19 +108,19 @@ export default function Home() {
               className="w-full max-w-md bg-zinc-900 border-2 border-yellow-500 rounded-xl p-6"
             >
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-arcade text-yellow-500">PERMANENT UPGRADES</h2>
+                <h2 className="text-2xl font-arcade text-yellow-500">MEJORAS PERMANENTES</h2>
                 <button onClick={() => setShowPermanentUpgrades(false)} className="text-white hover:text-primary">
                   <X className="w-6 h-6" />
                 </button>
               </div>
               <div className="mb-4 text-center">
-                <span className="text-yellow-500 font-arcade">COINS: {goldCoins}</span>
+                <span className="text-yellow-500 font-arcade">MONEDAS: {goldCoins}</span>
               </div>
               <div className="grid gap-4">
                 {[
-                  { id: 'baseHp', label: 'Base HP', cost: 100 },
-                  { id: 'baseSpeed', label: 'Base Speed', cost: 150 },
-                  { id: 'baseDmg', label: 'Base Damage', cost: 200 },
+                  { id: 'baseHp', label: 'Vida Base', cost: 100 },
+                  { id: 'baseSpeed', label: 'Velocidad Base', cost: 150 },
+                  { id: 'baseDmg', label: 'Daño Base', cost: 200 },
                 ].map(upg => {
                   const level = (permUpgrades as any)[upg.id];
                   const currentCost = upg.cost * (level + 1);
@@ -133,9 +133,9 @@ export default function Home() {
                     >
                       <div className="flex flex-col items-start">
                         <span className="font-bold">{upg.label}</span>
-                        <span className="text-xs text-yellow-500">Cost: {currentCost}</span>
+                        <span className="text-xs text-yellow-500">Costo: {currentCost}</span>
                       </div>
-                      <span className="font-arcade text-xs">LVL {level}</span>
+                      <span className="font-arcade text-xs">NVL {level}</span>
                     </button>
                   );
                 })}
@@ -160,7 +160,7 @@ export default function Home() {
           NEON <span className="text-primary">BLITZ</span>
         </h1>
         <p className="text-muted-foreground font-sans text-lg md:text-xl max-w-lg mx-auto">
-          Survive the endless waves. Upgrade your arsenal. Become a legend.
+          Sobrevive a las oleadas. Mejora tu arsenal. Conviértete en leyenda.
         </p>
       </motion.div>
 
@@ -180,8 +180,8 @@ export default function Home() {
             <div className="flex items-center gap-3">
               <Crosshair className="w-6 h-6 text-primary group-hover:rotate-90 transition-transform" />
               <div className="flex flex-col items-start">
-                <span className="text-[10px] font-arcade text-primary">CURRENT WEAPON</span>
-                <span className="text-sm font-bold text-white uppercase">{weapon === 'normal' ? 'Classic' : weapon}</span>
+                <span className="text-[10px] font-arcade text-primary">ARMA ACTUAL</span>
+                <span className="text-sm font-bold text-white uppercase">{weapon === 'normal' ? 'Clásica' : weapon}</span>
               </div>
             </div>
             <Star className="w-4 h-4 text-primary animate-pulse" />
@@ -189,7 +189,7 @@ export default function Home() {
 
           {/* Skin Selection */}
           <div className="w-full space-y-2 mt-2">
-            <span className="text-[10px] font-arcade text-muted-foreground ml-1">SELECT CHARACTER</span>
+            <span className="text-[10px] font-arcade text-muted-foreground ml-1">SELECCIONAR PERSONAJE</span>
             <div className="flex gap-2 w-full">
               {Object.entries(SKINS).map(([id, skin]) => (
                 <button
@@ -220,7 +220,7 @@ export default function Home() {
             onClick={startMission}
           >
             <Play className="w-8 h-8 group-hover:animate-pulse" />
-            START MISSION
+            INICIAR MISIÓN
           </GameButton>
 
           <div className="grid grid-cols-2 gap-4 w-full">
@@ -229,24 +229,29 @@ export default function Home() {
               className="p-4 bg-black/40 rounded border border-white/5 flex flex-col items-center text-center hover:bg-white/10 transition-colors"
             >
               <Star className="w-8 h-8 text-yellow-500 mb-2" />
-              <span className="text-xs text-muted-foreground uppercase font-bold">Upgrades</span>
-              <span className="text-sm font-bold text-yellow-500">PERMANENT</span>
+              <span className="text-xs text-muted-foreground uppercase font-bold">Mejoras</span>
+              <span className="text-sm font-bold text-yellow-500">PERMANENTES</span>
             </button>
             <div className="p-4 bg-black/40 rounded border border-white/5 flex flex-col items-center text-center">
               <div className="flex flex-wrap gap-1 justify-center mt-1">
-                {['easy', 'medium', 'hard', 'extreme'].map((d) => (
+                {[
+                  {id: 'easy', label: 'F'},
+                  {id: 'medium', label: 'N'},
+                  {id: 'hard', label: 'D'},
+                  {id: 'extreme', label: 'E'}
+                ].map((d) => (
                   <button
-                    key={d}
-                    onClick={() => setDifficulty(d as any)}
-                    className={`text-[10px] px-2 py-1 rounded font-arcade border ${difficulty === d ? 'bg-primary border-primary text-white' : 'border-white/10 text-muted-foreground'}`}
+                    key={d.id}
+                    onClick={() => setDifficulty(d.id as any)}
+                    className={`text-[10px] px-2 py-1 rounded font-arcade border ${difficulty === d.id ? 'bg-primary border-primary text-white' : 'border-white/10 text-muted-foreground'}`}
                   >
-                    {d[0]}
+                    {d.label}
                   </button>
                 ))}
               </div>
-              <span className="text-xs text-muted-foreground uppercase font-bold mt-2">Difficulty</span>
+              <span className="text-xs text-muted-foreground uppercase font-bold mt-2">Dificultad</span>
               <span className={`text-sm font-bold ${difficulty === 'extreme' ? 'text-destructive' : 'text-primary'}`}>
-                {difficulty.toUpperCase()}
+                {difficulty === 'easy' ? 'FÁCIL' : difficulty === 'medium' ? 'NORMAL' : difficulty === 'hard' ? 'DIFÍCIL' : 'EXTREMO'}
               </span>
             </div>
           </div>
@@ -261,14 +266,14 @@ export default function Home() {
         >
           <div className="flex items-center gap-2 mb-6 border-b border-white/10 pb-4">
             <Trophy className="text-yellow-500 w-6 h-6" />
-            <h2 className="font-arcade text-xl text-white">TOP AGENTS</h2>
+            <h2 className="font-arcade text-xl text-white">TOP AGENTES</h2>
           </div>
 
           <div className="overflow-y-auto flex-1 pr-2 space-y-2 custom-scrollbar">
             {isLoading ? (
-              <div className="text-center text-muted-foreground py-10">Loading data...</div>
+              <div className="text-center text-muted-foreground py-10">Cargando datos...</div>
             ) : scores?.length === 0 ? (
-              <div className="text-center text-muted-foreground py-10">No records yet. Be the first!</div>
+              <div className="text-center text-muted-foreground py-10">Sin registros. ¡Sé el primero!</div>
             ) : (
               scores?.sort((a, b) => b.score - a.score).map((score, idx) => (
                 <div 
@@ -290,7 +295,7 @@ export default function Home() {
                   </div>
                   <div className="text-right">
                     <div className="font-mono text-secondary">{score.score.toLocaleString()}</div>
-                    <div className="text-[10px] text-muted-foreground uppercase">Level {score.level}</div>
+                    <div className="text-[10px] text-muted-foreground uppercase">Nivel {score.level}</div>
                   </div>
                 </div>
               ))
@@ -300,7 +305,7 @@ export default function Home() {
       </div>
       
       <div className="absolute bottom-4 text-center text-muted-foreground text-xs font-mono opacity-50">
-        WASD / Arrows to Move • Mobile Optimized • v1.0.0
+        WASD / Flechas para Mover • Optimizado para Móvil • v1.0.0
       </div>
     </div>
   );
