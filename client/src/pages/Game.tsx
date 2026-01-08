@@ -553,9 +553,11 @@ export default function Game() {
 
     const loop = (timestamp: number) => {
       const state = gameState.current;
-      if (!state.lastTime) state.lastTime = timestamp;
-      const dt = (timestamp - state.lastTime) / 1000;
-      state.lastTime = timestamp;
+      // Use performance.now() for high precision time tracking
+      const now = performance.now();
+      if (!state.lastTime) state.lastTime = now;
+      const dt = Math.min(0.032, (now - state.lastTime) / 1000); // Cap dt to prevent jumps
+      state.lastTime = now;
 
       update(dt);
       draw();
@@ -667,28 +669,28 @@ export default function Game() {
     setUiState(s => ({ ...s, isPaused: true, showTempSkills: true }));
   };
 
-  const handleMoveJoystick = (dx: number, dy: number) => {
-    const state = gameState.current;
-    state.analogMove.x = dx;
-    state.analogMove.y = dy;
-    
-    // Update binary keys for legacy logic if needed
-    state.keys.w = dy < -0.3;
-    state.keys.s = dy > 0.3;
-    state.keys.a = dx < -0.3;
-    state.keys.d = dx > 0.3;
-  };
+    const handleMoveJoystick = (dx: number, dy: number) => {
+      const state = gameState.current;
+      state.analogMove.x = dx;
+      state.analogMove.y = dy;
+      
+      // Update binary keys for legacy logic if needed
+      state.keys.w = dy < -0.3;
+      state.keys.s = dy > 0.3;
+      state.keys.a = dx < -0.3;
+      state.keys.d = dx > 0.3;
+    };
 
-  const handleShootJoystick = (dx: number, dy: number) => {
-    const state = gameState.current;
-    state.analogShoot.x = dx;
-    state.analogShoot.y = dy;
-    
-    // Auto-fire only when actively using the joystick
-    if (dx !== 0 || dy !== 0) {
-      state.player.lastMoveAngle = Math.atan2(dy, dx);
-    }
-  };
+    const handleShootJoystick = (dx: number, dy: number) => {
+      const state = gameState.current;
+      state.analogShoot.x = dx;
+      state.analogShoot.y = dy;
+      
+      // Update direction immediately
+      if (dx !== 0 || dy !== 0) {
+        state.player.lastShootAngle = Math.atan2(dy, dx);
+      }
+    };
 
   const handleVirtualPad = (dx: number, dy: number) => {
     handleMoveJoystick(dx, dy);

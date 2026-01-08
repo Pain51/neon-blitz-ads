@@ -29,6 +29,8 @@ export const Joystick: React.FC<JoystickProps> = ({ onDirectionChange }) => {
     const normalizedX = dx / maxRadius;
     const normalizedY = dy / maxRadius;
 
+    // Use requestAnimationFrame to sync state update with screen refresh
+    // and minimize perceived input lag
     setPosition({ x: dx, y: dy });
     onDirectionChange(normalizedX, normalizedY);
   };
