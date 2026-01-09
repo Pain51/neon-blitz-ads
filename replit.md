@@ -77,3 +77,30 @@ migrations/       # Drizzle migrations
 - Press Start 2P (arcade font)
 - Outfit (sans-serif)
 - Loaded via Google Fonts in `index.html`
+
+## Android App (Capacitor)
+
+The project is configured to build a native Android APK using Capacitor.
+
+### Configuration
+- **capacitor.config.ts** - Main Capacitor configuration
+- **App ID**: `com.neonblitz.arcade`
+- **Web Directory**: `dist/public`
+
+### Build Commands
+```bash
+# Build web assets
+npm run build
+
+# Sync to Android
+npx cap sync android
+
+# Open in Android Studio
+npx cap open android
+```
+
+### APK Generation
+See `ANDROID_BUILD_GUIDE.md` for complete instructions on:
+- Generating debug APK for testing
+- Generating signed release APK for Play Store
+- Customizing app icon and splash screen
