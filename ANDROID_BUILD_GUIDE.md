@@ -2,26 +2,34 @@
 
 ## Requisitos Previos
 
-1. **Android Studio** instalado en tu computadora
+1. **Android Studio Iguana (2023.2.1) o mas reciente**
    - Descarga: https://developer.android.com/studio
 
-2. **Java Development Kit (JDK) 17+**
+2. **Java Development Kit (JDK) 17**
    - Android Studio lo incluye automaticamente
 
 ## Pasos para Generar el APK
 
-### 1. Descargar el Proyecto
+### 1. Descargar el Proyecto COMPLETO
 
-Descarga el proyecto completo desde Replit:
-- Click en los 3 puntos del menu
-- Selecciona "Download as zip"
+**IMPORTANTE: Debes descargar TODO el proyecto, no solo la carpeta android.**
 
-### 2. Abrir en Android Studio
+Desde Replit en tu navegador web (PC):
+1. Abre tu proyecto en replit.com
+2. En la barra lateral izquierda, busca el panel de "Files" (archivos)
+3. Haz clic derecho en el espacio vacio o en la carpeta raiz
+4. Selecciona "Download as zip"
+5. Espera que se descargue el archivo .zip completo
 
-1. Abre Android Studio
-2. Selecciona "Open" o "File > Open"
-3. Navega a la carpeta `android` dentro del proyecto descargado
-4. Espera a que Gradle sincronice (puede tomar unos minutos la primera vez)
+### 2. Descomprimir y Abrir en Android Studio
+
+1. Descomprime el archivo .zip en una carpeta de tu computadora
+2. Abre Android Studio
+3. Selecciona "Open" o "File > Open"
+4. **Navega a la carpeta `android` DENTRO del proyecto descomprimido**
+   - Ejemplo: `C:\Users\TuUsuario\Downloads\Topdown-Shooter-main\android`
+5. Espera a que Gradle sincronice (puede tomar 5-10 minutos la primera vez)
+6. Si te pide actualizar Gradle o plugins, acepta las actualizaciones
 
 ### 3. Generar APK de Debug (para pruebas)
 
