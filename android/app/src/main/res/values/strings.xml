@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Neon Blitz</string>
+    <string name="title_activity_main">Neon Blitz</string>
+    <string name="package_name">com.neonblitz.arcade</string>
+    <string name="custom_url_scheme">com.neonblitz.arcade</string>
+</resources>
