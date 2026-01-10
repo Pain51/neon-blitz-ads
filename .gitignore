@@ -4,3 +4,16 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Android build outputs
+android/app/build/
+android/.gradle/
+android/build/
+android/capacitor-cordova-android-plugins/build/
+
+# Replit attached assets (screenshots)
+attached_assets/*.png
+
+# IDE
+.idea/
+*.iml
