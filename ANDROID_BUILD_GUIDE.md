@@ -1,6 +1,77 @@
 # Guia para Generar APK de Neon Blitz
 
-## Requisitos Previos
+Hay dos metodos para generar el APK:
+- **Metodo 1 (Recomendado)**: Usar GitHub Actions (automatico en la nube)
+- **Metodo 2**: Usar Android Studio (requiere PC potente)
+
+---
+
+## METODO 1: GitHub Actions (Recomendado)
+
+Este metodo compila el APK automaticamente en la nube. No necesitas Android Studio.
+
+### Paso 1: Crear cuenta de GitHub
+
+1. Ve a https://github.com
+2. Crea una cuenta gratis si no tienes una
+3. Inicia sesion
+
+### Paso 2: Crear un repositorio nuevo
+
+1. En GitHub, haz clic en el boton verde **"New"** o ve a https://github.com/new
+2. Nombre del repositorio: `neon-blitz` (o el que prefieras)
+3. Selecciona **"Public"** (gratis)
+4. NO marques "Add a README file"
+5. Haz clic en **"Create repository"**
+
+### Paso 3: Descargar el proyecto de Replit
+
+1. En Replit, descarga el proyecto como ZIP (clic derecho en Files > Download as zip)
+2. Descomprime el archivo en tu computadora
+
+### Paso 4: Subir el proyecto a GitHub
+
+**Opcion A - Usando GitHub Desktop (mas facil):**
+1. Descarga GitHub Desktop: https://desktop.github.com
+2. Inicia sesion con tu cuenta de GitHub
+3. File > Add Local Repository
+4. Selecciona la carpeta del proyecto descomprimido
+5. Haz clic en "Publish repository"
+
+**Opcion B - Usando la web de GitHub:**
+1. En tu repositorio nuevo, haz clic en "uploading an existing file"
+2. Arrastra TODOS los archivos del proyecto descomprimido
+3. Haz clic en "Commit changes"
+
+### Paso 5: Esperar la compilacion
+
+1. En tu repositorio de GitHub, ve a la pestana **"Actions"**
+2. Veras un workflow llamado "Build Android APK"
+3. Haz clic en el para ver el progreso
+4. Espera 5-10 minutos hasta que aparezca el check verde
+
+### Paso 6: Descargar el APK
+
+1. Cuando termine (check verde), haz clic en el workflow completado
+2. Baja hasta la seccion **"Artifacts"**
+3. Haz clic en **"neon-blitz-debug-apk"** para descargar
+4. Descomprime el archivo descargado
+5. El APK esta dentro: `app-debug.apk`
+
+### Paso 7: Instalar en tu telefono
+
+1. Copia el archivo `app-debug.apk` a tu telefono Android
+2. Abre el archivo en tu telefono
+3. Si te pide permiso para instalar desde fuentes desconocidas, acepta
+4. Instala y disfruta el juego!
+
+---
+
+## METODO 2: Android Studio (Alternativo)
+
+Usa este metodo solo si tienes una PC potente con Android Studio.
+
+### Requisitos Previos
 
 1. **Android Studio Iguana (2023.2.1) o mas reciente**
    - Descarga: https://developer.android.com/studio
@@ -8,7 +79,7 @@
 2. **Java Development Kit (JDK) 17**
    - Android Studio lo incluye automaticamente
 
-## Pasos para Generar el APK
+### Pasos para Generar el APK
 
 ### 1. Descargar el Proyecto COMPLETO
 
