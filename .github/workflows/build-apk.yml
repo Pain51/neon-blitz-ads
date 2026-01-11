@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK & AAB
 
 on:
   push:
@@ -46,9 +46,20 @@ jobs:
       working-directory: android
       run: ./gradlew assembleDebug
 
-    - name: Upload APK
+    - name: Build Release AAB (for Play Store)
+      working-directory: android
+      run: ./gradlew bundleRelease
+
+    - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
         name: neon-blitz-debug-apk
         path: android/app/build/outputs/apk/debug/app-debug.apk
+        retention-days: 30
+
+    - name: Upload Release AAB
+      uses: actions/upload-artifact@v4
+      with:
+        name: neon-blitz-release-aab
+        path: android/app/build/outputs/bundle/release/app-release.aab
         retention-days: 30
