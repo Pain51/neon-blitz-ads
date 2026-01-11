@@ -26,6 +26,9 @@ jobs:
 
     - name: Build web assets
       run: npm run build
+      env:
+        VITE_ADMOB_BANNER_ID: ca-app-pub-5901537254343592/4973586423
+        VITE_ADMOB_INTERSTITIAL_ID: ca-app-pub-5901537254343592/1988330432
 
     - name: Set up JDK 21
       uses: actions/setup-java@v4
