@@ -104,3 +104,17 @@ See `ANDROID_BUILD_GUIDE.md` for complete instructions on:
 - Generating debug APK for testing
 - Generating signed release APK for Play Store
 - Customizing app icon and splash screen
+
+### AdMob Integration
+The game includes Google AdMob for monetization:
+- **Plugin**: `@capacitor-community/admob`
+- **Banner ads**: Displayed on the home screen
+- **Interstitial ads**: Shown when game ends (Game Over)
+
+**Configuration:**
+- App ID is stored in `android/app/src/main/res/values/strings.xml`
+- Ad Unit IDs are configured via environment variables:
+  - `VITE_ADMOB_BANNER_ID` - Banner ad unit ID
+  - `VITE_ADMOB_INTERSTITIAL_ID` - Interstitial ad unit ID
+- The `useAdMob` hook (`client/src/hooks/useAdMob.ts`) handles initialization and ad display
+- Ads only run on native Android platform (not in web browser)
