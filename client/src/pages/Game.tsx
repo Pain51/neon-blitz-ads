@@ -6,17 +6,17 @@ import { Joystick } from '@/components/game/Joystick';
 import { GameOverMenu } from '@/components/game/GameOverMenu';
 import { useGameAudio } from '@/hooks/useGameAudio';
 
-import enemyNormalImg from '@assets/generated_images/neon_red_pixel-art_enemy_drone.png';
-import enemySpecialImg from '@assets/generated_images/neon_purple_pixel-art_special_enemy.png';
-import enemyBossImg from '@assets/generated_images/neon_dark-red_pixel-art_boss_tank.png';
+import enemyNormalImg from '@assets/1768104330493_1768106295454.jpg';
+import enemySpecialImg from '@assets/1768104549092_1768106295467.jpg';
+import enemyBossImg from '@assets/1768104716780_1768106295437.jpg';
 
 // --- GAME CONSTANTS ---
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
 const PLAYER_SIZE = 24;
 const BULLET_SIZE_BASE = 6;
-const ENEMY_SIZE_NORMAL = 24;
-const ENEMY_SIZE_BOSS = 60;
+const ENEMY_SIZE_NORMAL = 43;
+const ENEMY_SIZE_BOSS = 108;
 const XP_GEM_SIZE = 10;
 
 // Colors
@@ -44,6 +44,10 @@ interface Entity {
   fireEffect?: number;
   iceEffect?: number;
   originalSpeed?: number;
+  isOriginalFire?: boolean;
+  isOriginalIce?: boolean;
+  explosionEffect?: number;
+  poisonEffect?: number;
 }
 
 interface Bullet extends Entity {
@@ -125,9 +129,9 @@ export default function Game() {
       hp: 100,
       maxHp: 100,
       radius: PLAYER_SIZE / 2,
-      speed: 200,
+      speed: 120,
       fireRate: 0.3,
-      bulletSpeed: 400,
+      bulletSpeed: 240,
       bulletSize: BULLET_SIZE_BASE,
       pierce: 1,
       angle: 0,
@@ -181,6 +185,50 @@ export default function Game() {
   stopMusicRef.current = stopMusic;
   
   const [audioEnabled, setAudioEnabledState] = useState(true);
+  
+  const [canvasDimensions, setCanvasDimensions] = useState({ width: CANVAS_WIDTH, height: CANVAS_HEIGHT });
+  
+  useEffect(() => {
+    const updateCanvasSize = () => {
+      const container = document.querySelector('main');
+      if (!container) return;
+      
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
+      
+      const aspectRatio = CANVAS_WIDTH / CANVAS_HEIGHT;
+      const containerAspectRatio = containerWidth / containerHeight;
+      
+      let newWidth, newHeight;
+      if (containerAspectRatio > aspectRatio) {
+        newHeight = Math.min(containerHeight - 20, CANVAS_HEIGHT);
+        newWidth = newHeight * aspectRatio;
+      } else {
+        newWidth = Math.min(containerWidth - 20, CANVAS_WIDTH);
+        newHeight = newWidth / aspectRatio;
+      }
+      
+      setCanvasDimensions({ width: Math.floor(newWidth), height: Math.floor(newHeight) });
+    };
+    
+    updateCanvasSize();
+    
+    const handleResize = () => updateCanvasSize();
+    const handleOrientation = () => setTimeout(updateCanvasSize, 100);
+    
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleOrientation);
+    
+    const mediaQuery = window.matchMedia('(orientation: portrait)');
+    const handleMediaChange = () => setTimeout(updateCanvasSize, 100);
+    mediaQuery.addEventListener('change', handleMediaChange);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleOrientation);
+      mediaQuery.removeEventListener('change', handleMediaChange);
+    };
+  }, []);
   
   const [joystickPositions, setJoystickPositions] = useState(() => {
     const saved = localStorage.getItem('joystickPositions');
@@ -478,7 +526,7 @@ export default function Game() {
               radius: state.player.bulletSize,
               color: COLOR_BULLET,
               hp: 1, maxHp: 1, pierce: state.player.pierce,
-              life: state.player.bulletLife
+              life: state.player.bulletLife * 0.5
             });
           }
           state.bulletTrails.push({ x: state.player.x, y: state.player.y, life: 1, color: '#f59e0b' });
@@ -546,7 +594,7 @@ export default function Game() {
       state.spawnTimer -= dt * 1000;
       if (state.spawnTimer <= 0) {
         spawnEnemy();
-        const difficultyFactor = Math.max(200, 1000 - (state.level * 50));
+        const difficultyFactor = Math.max(105, 526 - (state.level * 26));
         state.spawnTimer = difficultyFactor;
       }
 
@@ -557,13 +605,13 @@ export default function Game() {
         const dist = Math.sqrt(dx*dx + dy*dy);
         
         // Different speed and movement patterns per enemy type
-        let speed = 60 + (state.level * 2);
+        let speed = (60 + (state.level * 2)) * 0.6;
         let moveX = dx / dist;
         let moveY = dy / dist;
         
         switch(e.type) {
           case 'boss':
-            speed = 30;
+            speed = 30 * 0.6;
             // Boss fires in a circle pattern
             e.shootTimer = (e.shootTimer || 3) - dt;
             if (e.shootTimer <= 0) {
@@ -584,13 +632,13 @@ export default function Game() {
             }
             break;
           case 'fast':
-            speed = 150 + (state.level * 3);
+            speed = (150 + (state.level * 3)) * 0.6;
             break;
           case 'tank':
-            speed = 35;
+            speed = 35 * 0.6;
             break;
           case 'zigzag':
-            speed = 80;
+            speed = 80 * 0.6;
             e.zigzagTimer = (e.zigzagTimer || 0) + dt;
             const zigzagOffset = Math.sin(e.zigzagTimer * 8) * 0.8;
             const perpX = -moveY;
@@ -599,7 +647,7 @@ export default function Game() {
             moveY += perpY * zigzagOffset;
             break;
           case 'shooter':
-            speed = 40;
+            speed = 40 * 0.6;
             e.shootTimer = (e.shootTimer || 2) - dt;
             if (e.shootTimer <= 0 && dist < 400) {
               e.shootTimer = 2.5;
@@ -617,10 +665,10 @@ export default function Game() {
             break;
         }
         
-        // Process fire effect (20% damage per second for 3 seconds)
+        // Process fire effect (10% total health damage over 3 seconds with contagion)
         if (e.fireEffect && e.fireEffect > 0) {
           e.fireEffect -= dt;
-          const fireDamage = e.maxHp * 0.20 * dt / 3; // 20% over 3 seconds
+          const fireDamage = e.maxHp * 0.10 * dt / 3; // 10% over 3 seconds
           e.hp -= fireDamage;
           // Fire particles
           if (Math.random() < 0.3) {
@@ -633,6 +681,17 @@ export default function Game() {
               color: Math.random() > 0.5 ? '#ff6600' : '#ffcc00',
               size: 3 + Math.random() * 3
             });
+          }
+          // Fire contagion - only original fire spreads
+          if (e.isOriginalFire) {
+            for (const other of state.enemies) {
+              if (other === e || other.fireEffect) continue;
+              const distToOther = Math.sqrt((other.x - e.x) ** 2 + (other.y - e.y) ** 2);
+              if (distToOther < e.radius + other.radius + 20) {
+                other.fireEffect = 3.0;
+                other.isOriginalFire = false; // Secondary fire doesn't spread
+              }
+            }
           }
           if (e.hp <= 0) {
             createExplosion(e.x, e.y, '#ff6600', 15);
@@ -653,10 +712,138 @@ export default function Game() {
           }
         }
         
-        // Process ice effect (60% slow for 3 seconds)
+        // Process ice effect (70% slow for 3 seconds with contagion)
         if (e.iceEffect && e.iceEffect > 0) {
           e.iceEffect -= dt;
-          speed *= 0.4; // 60% slow = 40% of original speed
+          speed *= 0.3; // 70% slow = 30% of original speed
+          // Ice contagion - only original ice spreads
+          if (e.isOriginalIce) {
+            for (const other of state.enemies) {
+              if (other === e || other.iceEffect) continue;
+              const distToOther = Math.sqrt((other.x - e.x) ** 2 + (other.y - e.y) ** 2);
+              if (distToOther < e.radius + other.radius + 20) {
+                other.iceEffect = 3.0;
+                other.isOriginalIce = false; // Secondary ice doesn't spread
+              }
+            }
+          }
+        }
+        
+        // Process explosion effect (2s countdown, then 30% damage in 60x60 area)
+        if (e.explosionEffect && e.explosionEffect > 0) {
+          e.explosionEffect -= dt;
+          if (e.explosionEffect <= 0) {
+            createExplosion(e.x, e.y, '#ffffff', 25, 2);
+            playSoundRef.current('explosion');
+            const enemiesToKill: Entity[] = [];
+            for (const other of state.enemies) {
+              if (other === e) continue;
+              const distToOther = Math.sqrt((other.x - e.x) ** 2 + (other.y - e.y) ** 2);
+              if (distToOther < 30) {
+                other.hp -= other.maxHp * 0.30;
+                state.damageNumbers.push({
+                  x: other.x + (Math.random() - 0.5) * 20,
+                  y: other.y - other.radius,
+                  value: Math.round(other.maxHp * 0.30 * 10),
+                  life: 1.0,
+                  isCrit: true
+                });
+                if (other.hp <= 0) {
+                  enemiesToKill.push(other);
+                }
+              }
+            }
+            for (const deadEnemy of enemiesToKill) {
+              const idx = state.enemies.indexOf(deadEnemy);
+              if (idx !== -1) {
+                createExplosion(deadEnemy.x, deadEnemy.y, deadEnemy.color, 12);
+                state.enemies.splice(idx, 1);
+                state.combo++;
+                state.comboTimer = 2.0;
+                state.score += Math.floor(deadEnemy.xpValue! * 10 * (1 + state.combo * 0.1));
+                state.stats.enemiesKilled++;
+                if (deadEnemy.type === 'boss') state.stats.bossesKilled++;
+                state.xpGems.push({
+                  id: Math.random(),
+                  x: deadEnemy.x, y: deadEnemy.y, vx:0, vy:0,
+                  radius: XP_GEM_SIZE,
+                  color: COLOR_XP,
+                  hp: 1, maxHp: 1, xpValue: deadEnemy.xpValue
+                });
+              }
+            }
+            if (enemiesToKill.length > 0) {
+              setUiState(s => ({ ...s, score: state.score, stats: { ...state.stats } }));
+            }
+          }
+        }
+        
+        // Process poison effect (5% hp/sec for 5 seconds + toxic cloud damages nearby 2% hp/sec)
+        if (e.poisonEffect && e.poisonEffect > 0) {
+          e.poisonEffect -= dt;
+          const poisonDamage = e.maxHp * 0.05 * dt; // 5% per second
+          e.hp -= poisonDamage;
+          // Poison particles (green/purple)
+          if (Math.random() < 0.4) {
+            state.particles.push({
+              x: e.x + (Math.random() - 0.5) * e.radius * 1.5,
+              y: e.y + (Math.random() - 0.5) * e.radius * 1.5,
+              vx: (Math.random() - 0.5) * 40,
+              vy: -30 - Math.random() * 20,
+              life: 0.6 + Math.random() * 0.4,
+              color: Math.random() > 0.5 ? '#22c55e' : '#a855f7',
+              size: 2 + Math.random() * 3
+            });
+          }
+          // Toxic cloud damages nearby enemies
+          const toxicKills: Entity[] = [];
+          for (const other of state.enemies) {
+            if (other === e) continue;
+            const distToOther = Math.sqrt((other.x - e.x) ** 2 + (other.y - e.y) ** 2);
+            if (distToOther < e.radius + other.radius + 30) {
+              other.hp -= other.maxHp * 0.02 * dt;
+              if (other.hp <= 0 && !toxicKills.includes(other)) {
+                toxicKills.push(other);
+              }
+            }
+          }
+          for (const deadEnemy of toxicKills) {
+            const idx = state.enemies.indexOf(deadEnemy);
+            if (idx !== -1) {
+              createExplosion(deadEnemy.x, deadEnemy.y, '#22c55e', 10);
+              state.enemies.splice(idx, 1);
+              state.combo++;
+              state.comboTimer = 2.0;
+              state.score += Math.floor(deadEnemy.xpValue! * 10 * (1 + state.combo * 0.1));
+              state.stats.enemiesKilled++;
+              if (deadEnemy.type === 'boss') state.stats.bossesKilled++;
+              state.xpGems.push({
+                id: Math.random(),
+                x: deadEnemy.x, y: deadEnemy.y, vx:0, vy:0,
+                radius: XP_GEM_SIZE,
+                color: COLOR_XP,
+                hp: 1, maxHp: 1, xpValue: deadEnemy.xpValue
+              });
+              setUiState(s => ({ ...s, score: state.score, stats: { ...state.stats } }));
+            }
+          }
+          if (e.hp <= 0) {
+            createExplosion(e.x, e.y, '#22c55e', 15);
+            state.enemies.splice(i, 1);
+            state.combo++;
+            state.comboTimer = 2.0;
+            state.score += Math.floor(e.xpValue! * 10 * (1 + state.combo * 0.1));
+            state.stats.enemiesKilled++;
+            state.xpGems.push({
+              id: Math.random(),
+              x: e.x, y: e.y, vx:0, vy:0,
+              radius: XP_GEM_SIZE,
+              color: COLOR_XP,
+              hp: 1, maxHp: 1, xpValue: e.xpValue
+            });
+            setUiState(s => ({ ...s, score: state.score, stats: { ...state.stats } }));
+            continue;
+          }
         }
         
         e.x += moveX * speed * dt;
@@ -695,7 +882,7 @@ export default function Game() {
           if (Math.sqrt(dbx*dbx + dby*dby) < e.radius + b.radius) {
             const weaponType = new URLSearchParams(window.location.search).get('weapon') || 'normal';
             let baseDamage = 2;
-            if (weaponType === 'laser') baseDamage = 0.3;
+            if (weaponType === 'laser') baseDamage = 0.15;
             if (weaponType === 'shotgun') baseDamage = 0.5;
 
             const saved = localStorage.getItem('permanentUpgrades');
@@ -708,14 +895,24 @@ export default function Game() {
             b.pierce--;
             createExplosion(b.x, b.y, COLOR_BULLET, 3);
             
-            // Apply fire/ice effects from permanent upgrades
-            if (perms.bulletFire > 0) {
+            // Apply fire/ice effects from permanent upgrades (5% probability each)
+            if (perms.bulletFire > 0 && Math.random() < 0.05) {
               e.fireEffect = 3.0; // 3 seconds of burn
+              e.isOriginalFire = true;
               if (!e.originalSpeed) e.originalSpeed = 1;
             }
-            if (perms.bulletIce > 0) {
+            if (perms.bulletIce > 0 && Math.random() < 0.05) {
               e.iceEffect = 3.0; // 3 seconds of slow
+              e.isOriginalIce = true;
               if (!e.originalSpeed) e.originalSpeed = 1;
+            }
+            // Apply explosion effect (5% probability)
+            if (Math.random() < 0.05) {
+              e.explosionEffect = 2.0; // 2 second countdown
+            }
+            // Apply poison effect (5% probability)
+            if (Math.random() < 0.05) {
+              e.poisonEffect = 5.0; // 5 seconds of poison
             }
             
             // Damage number effect
@@ -1072,6 +1269,52 @@ export default function Game() {
           ctx.globalAlpha = 1;
         }
         
+        // Draw explosion aura effect (white pulsing)
+        if (e.explosionEffect && e.explosionEffect > 0) {
+          ctx.globalAlpha = 0.6;
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 4;
+          ctx.shadowColor = '#ffffff';
+          ctx.shadowBlur = 20;
+          const pulseRadius = e.radius + 6 + Math.sin(Date.now() / 80) * 4;
+          ctx.beginPath();
+          ctx.arc(e.x, e.y, pulseRadius, 0, Math.PI * 2);
+          ctx.stroke();
+          // Inner glow
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+          ctx.beginPath();
+          ctx.arc(e.x, e.y, e.radius + 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+          ctx.globalAlpha = 1;
+        }
+        
+        // Draw poison aura effect (green/purple)
+        if (e.poisonEffect && e.poisonEffect > 0) {
+          ctx.globalAlpha = 0.5;
+          ctx.strokeStyle = '#22c55e';
+          ctx.lineWidth = 3;
+          ctx.shadowColor = '#22c55e';
+          ctx.shadowBlur = 15;
+          ctx.beginPath();
+          ctx.arc(e.x, e.y, e.radius + 5, 0, Math.PI * 2);
+          ctx.stroke();
+          // Poison droplets
+          for (let i = 0; i < 3; i++) {
+            const angle = (i / 3) * Math.PI * 2 + Date.now() / 800;
+            ctx.fillStyle = i % 2 === 0 ? '#22c55e' : '#a855f7';
+            ctx.beginPath();
+            ctx.arc(
+              e.x + Math.cos(angle) * (e.radius + 10),
+              e.y + Math.sin(angle) * (e.radius + 10),
+              3, 0, Math.PI * 2
+            );
+            ctx.fill();
+          }
+          ctx.shadowBlur = 0;
+          ctx.globalAlpha = 1;
+        }
+        
         const img = e.type === 'boss' ? enemyBossImgRef.current : (e.type === 'special' ? enemySpecialImgRef.current : enemyNormalImgRef.current);
         if (img && img.complete && img.naturalWidth !== 0) {
           ctx.drawImage(img, e.x - e.radius, e.y - e.radius, e.radius * 2, e.radius * 2);
@@ -1182,7 +1425,6 @@ export default function Game() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const state = gameState.current;
-      state.analogMove.x = 0; state.analogMove.y = 0;
       if (e.code === 'Space') {
         e.preventDefault();
         setUiState(prev => {
@@ -1383,13 +1625,23 @@ export default function Game() {
         onMouseUp={handleJoystickDragEnd}
         onMouseLeave={handleJoystickDragEnd}
       >
-        <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} className="max-w-full max-h-full border-2 border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.5)]" />
+        <canvas 
+          ref={canvasRef} 
+          width={CANVAS_WIDTH} 
+          height={CANVAS_HEIGHT} 
+          className="max-w-full max-h-full border-2 border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.5)]" 
+          style={{ 
+            width: canvasDimensions.width, 
+            height: canvasDimensions.height 
+          }}
+        />
         
         {editingJoysticks && (
-          <div className="absolute inset-0 bg-black/50 z-20 flex items-center justify-center">
-            <div className="text-center p-4 bg-gray-900/90 rounded-xl border border-green-500">
+          <div className="absolute inset-0 bg-black/50 z-20 flex items-center justify-center pointer-events-none">
+            <div className="text-center p-4 bg-gray-900/90 rounded-xl border border-green-500 pointer-events-auto">
               <p className="text-sm text-green-400 mb-2">MODO EDICION</p>
               <p className="text-[10px] text-gray-400">Arrastra los joysticks a donde quieras</p>
+              <p className="text-[8px] text-yellow-400 mt-1">Los joysticks ahora son mas grandes para facilitar el posicionamiento</p>
               <button onClick={toggleEditJoysticks} className="mt-4 px-4 py-2 bg-green-600 hover:bg-green-500 rounded text-xs">LISTO</button>
             </div>
           </div>
@@ -1398,23 +1650,23 @@ export default function Game() {
         {editingJoysticks ? (
           <>
             <div 
-              className="absolute transform scale-[0.6] md:scale-100 origin-bottom-left z-30 cursor-move ring-2 ring-green-500 rounded-full"
+              className="absolute transform scale-100 md:scale-125 origin-bottom-left z-30 cursor-move ring-4 ring-green-500 ring-opacity-80 rounded-full animate-pulse"
               style={{ left: joystickPositions.move.x, bottom: joystickPositions.move.y }}
               onTouchStart={() => handleJoystickDragStart('move')}
               onMouseDown={() => handleJoystickDragStart('move')}
             > 
               <div className="pointer-events-none">
-                <Joystick size={120} onMove={() => {}} label="MOVER" />
+                <Joystick size={150} onMove={() => {}} label="MOVER" />
               </div>
             </div>
             <div 
-              className="absolute transform scale-[0.6] md:scale-100 origin-bottom-right z-30 cursor-move ring-2 ring-green-500 rounded-full"
+              className="absolute transform scale-100 md:scale-125 origin-bottom-right z-30 cursor-move ring-4 ring-green-500 ring-opacity-80 rounded-full animate-pulse"
               style={{ right: joystickPositions.shoot.x, bottom: joystickPositions.shoot.y }}
               onTouchStart={() => handleJoystickDragStart('shoot')}
               onMouseDown={() => handleJoystickDragStart('shoot')}
             > 
               <div className="pointer-events-none">
-                <Joystick size={120} onMove={() => {}} label="DISPARAR" />
+                <Joystick size={150} onMove={() => {}} label="DISPARAR" />
               </div>
             </div>
           </>
