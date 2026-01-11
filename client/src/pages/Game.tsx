@@ -264,6 +264,7 @@ export default function Game() {
       bulletSpeed: 0,
       bulletLife: 0,
       bulletSize: 0,
+      fireRate: 0,
     } as Record<string, number>,
     stats: {
       enemiesKilled: 0,
@@ -1262,7 +1263,21 @@ export default function Game() {
       });
 
       state.bullets.forEach(b => {
-        ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2); ctx.fill();
+        if (b.color === '#00ffff' && b.pierce >= 10) {
+          const angle = Math.atan2(b.vy, b.vx);
+          const length = 25;
+          ctx.strokeStyle = b.color;
+          ctx.lineWidth = 3;
+          ctx.shadowColor = b.color;
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.moveTo(b.x - Math.cos(angle) * length / 2, b.y - Math.sin(angle) * length / 2);
+          ctx.lineTo(b.x + Math.cos(angle) * length / 2, b.y + Math.sin(angle) * length / 2);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+        } else {
+          ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2); ctx.fill();
+        }
       });
 
       state.enemies.forEach(e => {
@@ -1352,48 +1367,14 @@ export default function Game() {
           ctx.globalAlpha = 1;
         }
         
-        ctx.fillStyle = e.color;
-        ctx.beginPath();
-        if (e.type === 'boss') {
-          ctx.shadowColor = '#fbbf24';
-          ctx.shadowBlur = 20;
-          for (let i = 0; i < 8; i++) {
-            const angle = (i / 8) * Math.PI * 2;
-            const petalX = e.x + Math.cos(angle) * e.radius * 0.7;
-            const petalY = e.y + Math.sin(angle) * e.radius * 0.7;
-            ctx.beginPath();
-            ctx.ellipse(petalX, petalY, e.radius * 0.4, e.radius * 0.25, angle, 0, Math.PI * 2);
-            ctx.fillStyle = '#fbbf24';
-            ctx.fill();
-          }
-          ctx.beginPath();
-          ctx.arc(e.x, e.y, e.radius * 0.4, 0, Math.PI * 2);
-          ctx.fillStyle = '#92400e';
-          ctx.fill();
-          ctx.shadowBlur = 0;
-        } else if (e.type === 'special') {
-          ctx.shadowColor = '#22c55e';
-          ctx.shadowBlur = 10;
-          for (let i = 0; i < 3; i++) {
-            const angle = (i / 3) * Math.PI * 2 - Math.PI / 2;
-            ctx.beginPath();
-            ctx.ellipse(e.x + Math.cos(angle) * e.radius * 0.4, e.y + Math.sin(angle) * e.radius * 0.4, 
-              e.radius * 0.5, e.radius * 0.35, angle + Math.PI / 2, 0, Math.PI * 2);
-            ctx.fillStyle = '#22c55e';
-            ctx.fill();
-          }
-          ctx.shadowBlur = 0;
+        const img = e.type === 'boss' ? enemyBossImgRef.current : (e.type === 'special' ? enemySpecialImgRef.current : enemyNormalImgRef.current);
+        if (img && img.complete && img.naturalWidth !== 0) {
+          ctx.drawImage(img, e.x - e.radius, e.y - e.radius, e.radius * 2, e.radius * 2);
         } else {
-          ctx.shadowColor = e.color;
-          ctx.shadowBlur = 8;
-          ctx.arc(e.x, e.y, e.radius * 0.9, 0, Math.PI * 2);
-          ctx.fillStyle = e.color;
+          ctx.fillStyle = e.color; ctx.beginPath();
+          if (e.type === 'boss') ctx.rect(e.x - e.radius, e.y - e.radius, e.radius*2, e.radius*2);
+          else ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
           ctx.fill();
-          ctx.beginPath();
-          ctx.arc(e.x, e.y - e.radius * 0.15, e.radius * 0.6, 0, Math.PI * 2);
-          ctx.fillStyle = e.type === 'tank' ? '#a8a29e' : '#a855f7';
-          ctx.fill();
-          ctx.shadowBlur = 0;
         }
         const hpPct = e.hp / e.maxHp;
         if (hpPct < 1) {
@@ -1771,7 +1752,8 @@ export default function Game() {
                     { id: 'speed', label: 'AGILIDAD', desc: '+10% Vel.' },
                     { id: 'bulletSpeed', label: 'VEL. BALA', desc: '+15% Vel.' },
                     { id: 'bulletLife', label: 'ALCANCE', desc: '+20% Rango' },
-                    { id: 'bulletSize', label: 'CALIBRE', desc: '+15% Tamaño', maxLevel: 5 }
+                    { id: 'bulletSize', label: 'CALIBRE', desc: '+15% Tamaño', maxLevel: 5 },
+                    { id: 'fireRate', label: 'CADENCIA', desc: '+15% Vel. Disparo' }
                   ].filter(skill => {
                     if (skill.maxLevel && uiState.tempSkills[skill.id] >= skill.maxLevel) return false;
                     return true;
@@ -1790,6 +1772,7 @@ export default function Game() {
                       if (skill.id === 'bulletSpeed') state.player.bulletSpeed *= 1.15;
                       if (skill.id === 'bulletLife') state.player.bulletLife *= 1.2;
                       if (skill.id === 'bulletSize') state.player.bulletSize *= 1.15;
+                      if (skill.id === 'fireRate') state.player.fireRate *= 0.85;
                       state.isPaused = false;
                       startMusicRef.current();
                     }} className="p-3 bg-gray-800 hover:bg-gray-700 border-2 border-white/10 hover:border-blue-400 rounded-lg flex flex-col items-center gap-1 transition-all">
