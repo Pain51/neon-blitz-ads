@@ -5,6 +5,7 @@ import { Pause, Star, Trophy, Volume2, VolumeX, X, Move } from 'lucide-react';
 import { Joystick } from '@/components/game/Joystick';
 import { GameOverMenu } from '@/components/game/GameOverMenu';
 import { useGameAudio } from '@/hooks/useGameAudio';
+import { useAdMob } from '@/hooks/useAdMob';
 
 import enemyNormalImg from '@assets/1768104330493_1768106295454.jpg';
 import enemySpecialImg from '@assets/1768104549092_1768106295467.jpg';
@@ -103,6 +104,8 @@ const ACHIEVEMENTS: Achievement[] = [
 export default function Game() {
   const [, setLocation] = useLocation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { showInterstitial, prepareInterstitial, isNativeApp } = useAdMob();
+  const interstitialShownRef = useRef(false);
   
   const enemyNormalImgRef = useRef<HTMLImageElement | null>(null);
   const enemySpecialImgRef = useRef<HTMLImageElement | null>(null);
@@ -302,6 +305,19 @@ export default function Game() {
       stopMusicRef.current();
     }
   };
+
+  useEffect(() => {
+    if (isNativeApp) {
+      prepareInterstitial();
+    }
+  }, [isNativeApp, prepareInterstitial]);
+
+  useEffect(() => {
+    if (uiState.isGameOver && isNativeApp && !interstitialShownRef.current) {
+      interstitialShownRef.current = true;
+      showInterstitial();
+    }
+  }, [uiState.isGameOver, isNativeApp, showInterstitial]);
 
   useEffect(() => {
     const removeWhiteBackground = (img: HTMLImageElement, ref: React.MutableRefObject<HTMLImageElement | null>) => {

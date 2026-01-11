@@ -5,10 +5,24 @@ import { GameButton } from '@/components/ui/GameButton';
 import { motion } from 'framer-motion';
 import { Trophy, Play, Skull, Crosshair, Star, X } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
+import { useAdMob } from '@/hooks/useAdMob';
 
 export default function Home() {
   const [, setLocation] = useLocation();
   const { data: scores, isLoading } = useScores();
+  const { showBanner, hideBanner, prepareInterstitial, isNativeApp } = useAdMob();
+
+  React.useEffect(() => {
+    if (isNativeApp) {
+      showBanner();
+      prepareInterstitial();
+    }
+    return () => {
+      if (isNativeApp) {
+        hideBanner();
+      }
+    };
+  }, [isNativeApp, showBanner, hideBanner, prepareInterstitial]);
 
   const [difficulty, setDifficulty] = React.useState<'easy' | 'medium' | 'hard' | 'extreme'>('medium');
   const [weapon, setWeapon] = React.useState<'normal' | 'laser' | 'shotgun'>('normal');

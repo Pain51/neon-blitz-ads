@@ -37,3 +37,9 @@ author = "agent"
 task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
+
+[userenv]
+
+[userenv.shared]
+VITE_ADMOB_BANNER_ID = "ca-app-pub-5901537254343592/4973586423"
+VITE_ADMOB_INTERSTITIAL_ID = "ca-app-pub-5901537254343592/1988330432"
