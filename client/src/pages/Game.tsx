@@ -53,6 +53,7 @@ interface Entity {
 interface Bullet extends Entity {
   pierce: number;
   life?: number;
+  isLaser?: boolean;
 }
 
 interface Particle {
@@ -550,10 +551,11 @@ export default function Game() {
             vy: Math.sin(angle) * state.player.bulletSpeed * 2,
             radius: 2, color: '#00ffff',
             hp: 1, maxHp: 1, pierce: 10,
-            life: state.player.bulletLife
+            life: state.player.bulletLife,
+            isLaser: true
           });
           state.bulletTrails.push({ x: state.player.x, y: state.player.y, life: 1, color: '#00ffff' });
-          state.shootTimer = 1.0;
+          state.shootTimer = 1.0 * (hasRapidFire ? 0.3 : 1) * (state.player.fireRate / 0.3);
         } else if (weaponType === 'shotgun') {
           playSoundRef.current('shootShotgun');
           for (let i = -3; i <= 3; i++) {
@@ -1263,7 +1265,7 @@ export default function Game() {
       });
 
       state.bullets.forEach(b => {
-        if (b.color === '#00ffff' && b.pierce >= 10) {
+        if (b.isLaser) {
           const angle = Math.atan2(b.vy, b.vx);
           const length = 25;
           ctx.strokeStyle = b.color;
