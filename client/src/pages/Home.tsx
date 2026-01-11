@@ -58,7 +58,9 @@ export default function Home() {
       baseSpeed: 0,
       baseDmg: 0,
       bulletFire: 0,
-      bulletIce: 0
+      bulletIce: 0,
+      bulletExplosion: 0,
+      bulletPoison: 0
     };
   });
   const [upgradeTab, setUpgradeTab] = React.useState<'stats' | 'effects'>('stats');
@@ -231,8 +233,10 @@ export default function Home() {
               ) : (
                 <div className="grid gap-3">
                   {[
-                    { id: 'bulletFire', label: 'FUEGO', cost: 500, desc: 'Quema enemigos (20% DMG/3s)', color: 'text-orange-500', maxLevel: 1 },
-                    { id: 'bulletIce', label: 'HIELO', cost: 500, desc: 'Ralentiza enemigos (60%/3s)', color: 'text-cyan-400', maxLevel: 1 },
+                    { id: 'bulletFire', label: 'FUEGO', cost: 500, desc: 'Quema y contagia enemigos (10% DMG/3s)', color: 'text-orange-500', maxLevel: 1 },
+                    { id: 'bulletIce', label: 'HIELO', cost: 500, desc: 'Congela y contagia (70% lento/3s)', color: 'text-cyan-400', maxLevel: 1 },
+                    { id: 'bulletExplosion', label: 'EXPLOSIÓN', cost: 750, desc: 'Explota en 2s (30% DMG área)', color: 'text-white', maxLevel: 1 },
+                    { id: 'bulletPoison', label: 'VENENO', cost: 750, desc: 'Nube tóxica (5% DMG/s)', color: 'text-green-500', maxLevel: 1 },
                   ].map(upg => {
                     const level = (permUpgrades as any)[upg.id] || 0;
                     const currentCost = upg.cost;

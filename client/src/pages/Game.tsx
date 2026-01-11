@@ -302,17 +302,56 @@ export default function Game() {
   };
 
   useEffect(() => {
+    const removeWhiteBackground = (img: HTMLImageElement, ref: React.MutableRefObject<HTMLImageElement | null>) => {
+      ref.current = img;
+      
+      const processImage = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          if (r > 240 && g > 240 && b > 240) {
+            data[i + 3] = 0;
+          } else if (r > 200 && g > 200 && b > 200) {
+            data[i + 3] = Math.floor((255 - Math.max(r, g, b)) * 2);
+          }
+        }
+        
+        ctx.putImageData(imageData, 0, 0);
+        const processedImg = new Image();
+        processedImg.src = canvas.toDataURL();
+        processedImg.onload = () => { ref.current = processedImg; };
+      };
+      
+      if (img.complete && img.naturalWidth > 0) {
+        processImage();
+      } else {
+        img.onload = processImage;
+      }
+    };
+
     const normal = new Image();
     normal.src = enemyNormalImg;
-    enemyNormalImgRef.current = normal;
+    removeWhiteBackground(normal, enemyNormalImgRef);
 
     const special = new Image();
     special.src = enemySpecialImg;
-    enemySpecialImgRef.current = special;
+    removeWhiteBackground(special, enemySpecialImgRef);
 
     const boss = new Image();
     boss.src = enemyBossImg;
-    enemyBossImgRef.current = boss;
+    removeWhiteBackground(boss, enemyBossImgRef);
   }, []);
 
   useEffect(() => {
@@ -886,7 +925,7 @@ export default function Game() {
             if (weaponType === 'shotgun') baseDamage = 0.5;
 
             const saved = localStorage.getItem('permanentUpgrades');
-            const perms = saved ? JSON.parse(saved) : { baseDmg: 0, bulletFire: 0, bulletIce: 0 };
+            const perms = saved ? JSON.parse(saved) : { baseDmg: 0, bulletFire: 0, bulletIce: 0, bulletExplosion: 0, bulletPoison: 0 };
             const finalDamage = baseDamage + (perms.baseDmg * 0.5) + (uiState.tempSkills.dmg * 1);
             const isCrit = Math.random() < (uiState.tempSkills.crit * 0.05);
             
@@ -895,24 +934,22 @@ export default function Game() {
             b.pierce--;
             createExplosion(b.x, b.y, COLOR_BULLET, 3);
             
-            // Apply fire/ice effects from permanent upgrades (5% probability each)
+            // Apply fire/ice/explosion/poison effects from permanent upgrades (5% probability each)
             if (perms.bulletFire > 0 && Math.random() < 0.05) {
-              e.fireEffect = 3.0; // 3 seconds of burn
+              e.fireEffect = 3.0;
               e.isOriginalFire = true;
               if (!e.originalSpeed) e.originalSpeed = 1;
             }
             if (perms.bulletIce > 0 && Math.random() < 0.05) {
-              e.iceEffect = 3.0; // 3 seconds of slow
+              e.iceEffect = 3.0;
               e.isOriginalIce = true;
               if (!e.originalSpeed) e.originalSpeed = 1;
             }
-            // Apply explosion effect (5% probability)
-            if (Math.random() < 0.05) {
-              e.explosionEffect = 2.0; // 2 second countdown
+            if (perms.bulletExplosion > 0 && Math.random() < 0.05) {
+              e.explosionEffect = 2.0;
             }
-            // Apply poison effect (5% probability)
-            if (Math.random() < 0.05) {
-              e.poisonEffect = 5.0; // 5 seconds of poison
+            if (perms.bulletPoison > 0 && Math.random() < 0.05) {
+              e.poisonEffect = 5.0;
             }
             
             // Damage number effect
