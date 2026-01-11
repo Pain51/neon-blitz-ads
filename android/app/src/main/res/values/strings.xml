@@ -4,4 +4,5 @@
     <string name="title_activity_main">Neon Blitz</string>
     <string name="package_name">com.neonblitz.arcade</string>
     <string name="custom_url_scheme">com.neonblitz.arcade</string>
+    <string name="admob_app_id">ca-app-pub-5901537254343592~3909924373</string>
 </resources>
