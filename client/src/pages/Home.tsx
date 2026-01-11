@@ -100,7 +100,7 @@ export default function Home() {
               <div className="grid gap-4">
                 {[
                   { id: 'normal', label: 'Clásica', desc: 'Equilibrada 2.0 DMG' },
-                  { id: 'laser', label: 'Láser', desc: 'Alta Frecuencia 0.3 DMG' },
+                  { id: 'laser', label: 'Láser', desc: 'Rayo potente 1/seg 0.075 DMG' },
                   { id: 'shotgun', label: 'Escopeta', desc: '5 Balas Dispersas 0.5 DMG' }
                 ].map(w => (
                   <button

@@ -552,7 +552,7 @@ export default function Game() {
             life: state.player.bulletLife
           });
           state.bulletTrails.push({ x: state.player.x, y: state.player.y, life: 1, color: '#00ffff' });
-          state.shootTimer = 0.05;
+          state.shootTimer = 1.0;
         } else if (weaponType === 'shotgun') {
           playSoundRef.current('shootShotgun');
           for (let i = -3; i <= 3; i++) {
@@ -921,7 +921,7 @@ export default function Game() {
           if (Math.sqrt(dbx*dbx + dby*dby) < e.radius + b.radius) {
             const weaponType = new URLSearchParams(window.location.search).get('weapon') || 'normal';
             let baseDamage = 2;
-            if (weaponType === 'laser') baseDamage = 0.15;
+            if (weaponType === 'laser') baseDamage = 0.075;
             if (weaponType === 'shotgun') baseDamage = 0.5;
 
             const saved = localStorage.getItem('permanentUpgrades');
@@ -1352,14 +1352,48 @@ export default function Game() {
           ctx.globalAlpha = 1;
         }
         
-        const img = e.type === 'boss' ? enemyBossImgRef.current : (e.type === 'special' ? enemySpecialImgRef.current : enemyNormalImgRef.current);
-        if (img && img.complete && img.naturalWidth !== 0) {
-          ctx.drawImage(img, e.x - e.radius, e.y - e.radius, e.radius * 2, e.radius * 2);
-        } else {
-          ctx.fillStyle = e.color; ctx.beginPath();
-          if (e.type === 'boss') ctx.rect(e.x - e.radius, e.y - e.radius, e.radius*2, e.radius*2);
-          else ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+        ctx.fillStyle = e.color;
+        ctx.beginPath();
+        if (e.type === 'boss') {
+          ctx.shadowColor = '#fbbf24';
+          ctx.shadowBlur = 20;
+          for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const petalX = e.x + Math.cos(angle) * e.radius * 0.7;
+            const petalY = e.y + Math.sin(angle) * e.radius * 0.7;
+            ctx.beginPath();
+            ctx.ellipse(petalX, petalY, e.radius * 0.4, e.radius * 0.25, angle, 0, Math.PI * 2);
+            ctx.fillStyle = '#fbbf24';
+            ctx.fill();
+          }
+          ctx.beginPath();
+          ctx.arc(e.x, e.y, e.radius * 0.4, 0, Math.PI * 2);
+          ctx.fillStyle = '#92400e';
           ctx.fill();
+          ctx.shadowBlur = 0;
+        } else if (e.type === 'special') {
+          ctx.shadowColor = '#22c55e';
+          ctx.shadowBlur = 10;
+          for (let i = 0; i < 3; i++) {
+            const angle = (i / 3) * Math.PI * 2 - Math.PI / 2;
+            ctx.beginPath();
+            ctx.ellipse(e.x + Math.cos(angle) * e.radius * 0.4, e.y + Math.sin(angle) * e.radius * 0.4, 
+              e.radius * 0.5, e.radius * 0.35, angle + Math.PI / 2, 0, Math.PI * 2);
+            ctx.fillStyle = '#22c55e';
+            ctx.fill();
+          }
+          ctx.shadowBlur = 0;
+        } else {
+          ctx.shadowColor = e.color;
+          ctx.shadowBlur = 8;
+          ctx.arc(e.x, e.y, e.radius * 0.9, 0, Math.PI * 2);
+          ctx.fillStyle = e.color;
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(e.x, e.y - e.radius * 0.15, e.radius * 0.6, 0, Math.PI * 2);
+          ctx.fillStyle = e.type === 'tank' ? '#a8a29e' : '#a855f7';
+          ctx.fill();
+          ctx.shadowBlur = 0;
         }
         const hpPct = e.hp / e.maxHp;
         if (hpPct < 1) {
