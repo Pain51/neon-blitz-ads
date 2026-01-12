@@ -13,8 +13,8 @@ import enemyBossImg from '@assets/1768104716780_1768106295437.jpg';
 import mapBackgroundImg from '@assets/generated_images/dark_neon_space_game_background.png';
 
 // --- GAME CONSTANTS ---
-const CANVAS_WIDTH = 1600;
-const CANVAS_HEIGHT = 1000;
+const CANVAS_WIDTH = 1200;
+const CANVAS_HEIGHT = 800;
 const PLAYER_SIZE = 24;
 const BULLET_SIZE_BASE = 6;
 const ENEMY_SIZE_NORMAL = 43;
@@ -213,10 +213,10 @@ export default function Game() {
       
       let newWidth, newHeight;
       if (containerAspectRatio > aspectRatio) {
-        newHeight = Math.min(containerHeight - 20, CANVAS_HEIGHT);
+        newHeight = containerHeight - 10;
         newWidth = newHeight * aspectRatio;
       } else {
-        newWidth = Math.min(containerWidth - 20, CANVAS_WIDTH);
+        newWidth = containerWidth - 10;
         newHeight = newWidth / aspectRatio;
       }
       
