@@ -10,10 +10,11 @@ import { useAdMob } from '@/hooks/useAdMob';
 import enemyNormalImg from '@assets/1768104330493_1768106295454.jpg';
 import enemySpecialImg from '@assets/1768104549092_1768106295467.jpg';
 import enemyBossImg from '@assets/1768104716780_1768106295437.jpg';
+import mapBackgroundImg from '@assets/generated_images/dark_neon_space_game_background.png';
 
 // --- GAME CONSTANTS ---
-const CANVAS_WIDTH = 1200;
-const CANVAS_HEIGHT = 800;
+const CANVAS_WIDTH = 1600;
+const CANVAS_HEIGHT = 1000;
 const PLAYER_SIZE = 24;
 const BULLET_SIZE_BASE = 6;
 const ENEMY_SIZE_NORMAL = 43;
@@ -110,6 +111,7 @@ export default function Game() {
   const enemyNormalImgRef = useRef<HTMLImageElement | null>(null);
   const enemySpecialImgRef = useRef<HTMLImageElement | null>(null);
   const enemyBossImgRef = useRef<HTMLImageElement | null>(null);
+  const backgroundImageRef = useRef<HTMLImageElement | null>(null);
 
   // Game State Refs
   const gameState = useRef({
@@ -368,6 +370,10 @@ export default function Game() {
     const boss = new Image();
     boss.src = enemyBossImg;
     removeWhiteBackground(boss, enemyBossImgRef);
+
+    const bgImg = new Image();
+    bgImg.src = mapBackgroundImg;
+    bgImg.onload = () => { backgroundImageRef.current = bgImg; };
   }, []);
 
   useEffect(() => {
@@ -561,15 +567,14 @@ export default function Game() {
           state.bullets.push({
             id: Math.random(),
             x: state.player.x, y: state.player.y,
-            vx: Math.cos(angle) * state.player.bulletSpeed * 2,
-            vy: Math.sin(angle) * state.player.bulletSpeed * 2,
+            vx: Math.cos(angle) * state.player.bulletSpeed * 2.5,
+            vy: Math.sin(angle) * state.player.bulletSpeed * 2.5,
             radius: 2, color: '#00ffff',
-            hp: 1, maxHp: 1, pierce: 10,
-            life: state.player.bulletLife,
+            hp: 0.25, maxHp: 0.25, pierce: 999,
             isLaser: true
           });
           state.bulletTrails.push({ x: state.player.x, y: state.player.y, life: 1, color: '#00ffff' });
-          state.shootTimer = 1.0 * (hasRapidFire ? 0.3 : 1) * (state.player.fireRate / 0.3);
+          state.shootTimer = 1.2 * (hasRapidFire ? 0.3 : 1);
         } else if (weaponType === 'shotgun') {
           playSoundRef.current('shootShotgun');
           for (let i = -3; i <= 3; i++) {
@@ -968,7 +973,7 @@ export default function Game() {
           if (Math.sqrt(dbx*dbx + dby*dby) < e.radius + b.radius) {
             const weaponType = new URLSearchParams(window.location.search).get('weapon') || 'normal';
             let baseDamage = 2;
-            if (weaponType === 'laser') baseDamage = 0.075;
+            if (weaponType === 'laser') baseDamage = 0.25;
             if (weaponType === 'shotgun') baseDamage = 0.5;
 
             const saved = localStorage.getItem('permanentUpgrades');
@@ -1244,31 +1249,35 @@ export default function Game() {
         ctx.translate(shakeX, shakeY);
       }
       
-      // Draw neon grid background
-      ctx.fillStyle = '#050508';
-      ctx.fillRect(-10, -10, CANVAS_WIDTH + 20, CANVAS_HEIGHT + 20);
+      // Draw background image
+      if (backgroundImageRef.current && backgroundImageRef.current.complete) {
+        ctx.drawImage(backgroundImageRef.current, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      } else {
+        ctx.fillStyle = '#050508';
+        ctx.fillRect(-10, -10, CANVAS_WIDTH + 20, CANVAS_HEIGHT + 20);
+      }
       
       const gridSize = 50;
       const time = Date.now() * 0.001;
       
-      // Animated grid with neon glow
+      // Subtle grid overlay on top of background
       for(let x = 0; x <= CANVAS_WIDTH; x += gridSize) {
-        const intensity = 0.08 + 0.02 * Math.sin(time + x * 0.1);
+        const intensity = 0.05 + 0.015 * Math.sin(time + x * 0.1);
         ctx.strokeStyle = `rgba(59, 130, 246, ${intensity})`;
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CANVAS_HEIGHT); ctx.stroke();
       }
       for(let y = 0; y <= CANVAS_HEIGHT; y += gridSize) {
-        const intensity = 0.08 + 0.02 * Math.sin(time + y * 0.1);
+        const intensity = 0.05 + 0.015 * Math.sin(time + y * 0.1);
         ctx.strokeStyle = `rgba(139, 92, 246, ${intensity})`;
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CANVAS_WIDTH, y); ctx.stroke();
       }
       
       // Vignette effect
-      const vignette = ctx.createRadialGradient(CANVAS_WIDTH/2, CANVAS_HEIGHT/2, 100, CANVAS_WIDTH/2, CANVAS_HEIGHT/2, CANVAS_WIDTH * 0.7);
+      const vignette = ctx.createRadialGradient(CANVAS_WIDTH/2, CANVAS_HEIGHT/2, 150, CANVAS_WIDTH/2, CANVAS_HEIGHT/2, CANVAS_WIDTH * 0.6);
       vignette.addColorStop(0, 'rgba(0,0,0,0)');
-      vignette.addColorStop(1, 'rgba(0,0,0,0.4)');
+      vignette.addColorStop(1, 'rgba(0,0,0,0.5)');
       ctx.fillStyle = vignette;
       ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
