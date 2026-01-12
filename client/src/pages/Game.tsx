@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pause, Star, Trophy, Volume2, VolumeX, X, Move } from 'lucide-react';
-import { Joystick } from '@/components/game/Joystick';
+import { Pause, Star, Trophy, Volume2, VolumeX, X } from 'lucide-react';
+import { FloatingJoystick } from '@/components/game/FloatingJoystick';
 import { GameOverMenu } from '@/components/game/GameOverMenu';
 import { useGameAudio } from '@/hooks/useGameAudio';
 import { useAdMob } from '@/hooks/useAdMob';
@@ -12,8 +12,8 @@ import enemySpecialImg from '@assets/1768104549092_1768106295467.jpg';
 import enemyBossImg from '@assets/1768104716780_1768106295437.jpg';
 
 // --- GAME CONSTANTS ---
-const CANVAS_WIDTH = 800;
-const CANVAS_HEIGHT = 600;
+const CANVAS_WIDTH = 1200;
+const CANVAS_HEIGHT = 800;
 const PLAYER_SIZE = 24;
 const BULLET_SIZE_BASE = 6;
 const ENEMY_SIZE_NORMAL = 43;
@@ -122,6 +122,12 @@ export default function Game() {
     lastTime: 0,
     spawnTimer: 0,
     spawnInterval: 1000,
+    round: 1,
+    enemiesInRound: 8,
+    roundEnemiesSpawned: 0,
+    roundEnemiesKilled: 0,
+    showRoundAnimation: true,
+    roundAnimationTimer: 2.0,
     shootTimer: 0,
     revivesLeft: 3,
     
@@ -234,20 +240,6 @@ export default function Game() {
     };
   }, []);
   
-  const [joystickPositions, setJoystickPositions] = useState(() => {
-    const saved = localStorage.getItem('joystickPositions');
-    if (saved) return JSON.parse(saved);
-    return {
-      move: { x: 24, y: 24 },
-      shoot: { x: -24, y: 24 }
-    };
-  });
-  const [joystickSize, setJoystickSize] = useState(() => {
-    const saved = localStorage.getItem('joystickSize');
-    return saved ? parseInt(saved) : 80;
-  });
-  const [editingJoysticks, setEditingJoysticks] = useState(false);
-  const [draggingJoystick, setDraggingJoystick] = useState<'move' | 'shoot' | null>(null);
   
   const [uiState, setUiState] = useState({
     score: 0,
@@ -264,6 +256,8 @@ export default function Game() {
     coins: 0,
     skillPoints: 0,
     controlType: 'joystick',
+    round: 1,
+    showRoundAnimation: true,
     upgradeLevels: {} as Record<string, number>,
     tempSkills: {
       dmg: 0,
@@ -653,11 +647,41 @@ export default function Game() {
         }
       }
 
-      state.spawnTimer -= dt * 1000;
-      if (state.spawnTimer <= 0) {
-        spawnEnemy();
-        const difficultyFactor = Math.max(105, 526 - (state.level * 26));
-        state.spawnTimer = difficultyFactor;
+      // Round animation timer - don't spawn during animation but keep game running
+      if (state.showRoundAnimation) {
+        state.roundAnimationTimer -= dt;
+        if (state.roundAnimationTimer <= 0) {
+          state.showRoundAnimation = false;
+          state.roundAnimationTimer = 0;
+          setUiState(s => ({ ...s, showRoundAnimation: false }));
+        }
+      }
+
+      // Round-based spawn system - only spawn when not showing animation
+      if (!state.showRoundAnimation && state.roundEnemiesSpawned < state.enemiesInRound) {
+        state.spawnTimer -= dt * 1000;
+        if (state.spawnTimer <= 0) {
+          spawnEnemy();
+          state.roundEnemiesSpawned++;
+          const difficultyFactor = Math.max(300, 800 - (state.round * 30));
+          state.spawnTimer = difficultyFactor;
+        }
+      }
+
+      // Check if round is complete (all enemies spawned AND killed)
+      if (state.roundEnemiesSpawned >= state.enemiesInRound && state.enemies.length === 0) {
+        state.round++;
+        // Formula: Round 1-10: 8 + (round-1)*2, Round 11+: 0.10 * round^2 + 24
+        if (state.round <= 10) {
+          state.enemiesInRound = 8 + (state.round - 1) * 2;
+        } else {
+          state.enemiesInRound = Math.floor(0.10 * state.round * state.round + 24);
+        }
+        state.roundEnemiesSpawned = 0;
+        state.showRoundAnimation = true;
+        state.roundAnimationTimer = 2.5;
+        playSoundRef.current('levelUp');
+        setUiState(s => ({ ...s, round: state.round, showRoundAnimation: true }));
       }
 
       for (let i = state.enemies.length - 1; i >= 0; i--) {
@@ -1602,56 +1626,6 @@ export default function Game() {
     }
   };
 
-  const handleJoystickDragStart = (joystick: 'move' | 'shoot') => {
-    if (!editingJoysticks) return;
-    setDraggingJoystick(joystick);
-    gameState.current.isPaused = true;
-  };
-
-  const handleJoystickDrag = (e: React.TouchEvent | React.MouseEvent) => {
-    if (!draggingJoystick || !editingJoysticks) return;
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    const mainEl = (e.currentTarget as HTMLElement).closest('main');
-    if (!mainEl) return;
-    const rect = mainEl.getBoundingClientRect();
-    
-    if (draggingJoystick === 'move') {
-      const x = Math.max(10, Math.min(clientX - rect.left, rect.width / 2 - 10));
-      const y = Math.max(10, Math.min(rect.height - (clientY - rect.top), rect.height - 80));
-      setJoystickPositions((prev: typeof joystickPositions) => ({ ...prev, move: { x, y } }));
-    } else {
-      const x = Math.max(10, Math.min(rect.right - clientX, rect.width / 2 - 10));
-      const y = Math.max(10, Math.min(rect.height - (clientY - rect.top), rect.height - 80));
-      setJoystickPositions((prev: typeof joystickPositions) => ({ ...prev, shoot: { x, y } }));
-    }
-  };
-
-  const handleJoystickDragEnd = () => {
-    if (draggingJoystick) {
-      localStorage.setItem('joystickPositions', JSON.stringify(joystickPositions));
-      setDraggingJoystick(null);
-      gameState.current.isPaused = false;
-    }
-  };
-
-  const handleJoystickSizeChange = (newSize: number) => {
-    setJoystickSize(newSize);
-    localStorage.setItem('joystickSize', newSize.toString());
-  };
-
-  const toggleEditJoysticks = () => {
-    const newState = !editingJoysticks;
-    setEditingJoysticks(newState);
-    if (newState) {
-      gameState.current.isPaused = true;
-      setUiState(s => ({ ...s, isPaused: true }));
-    } else {
-      gameState.current.isPaused = false;
-      setUiState(s => ({ ...s, isPaused: false }));
-    }
-  };
-
   return (
     <div className="flex flex-col h-screen bg-[#0a0a0a] text-white overflow-hidden font-press-start select-none">
       <header className="flex justify-between items-center p-2 md:p-4 border-b border-white/10 bg-black/50 backdrop-blur-md">
@@ -1663,6 +1637,9 @@ export default function Game() {
           <div className="flex items-center gap-1 text-[8px] md:text-xs text-green-400">
             <Trophy className="w-2 h-2 md:w-3 md:h-3" />
             <span>NVL {uiState.level}</span>
+          </div>
+          <div className="flex items-center gap-1 text-[8px] md:text-xs text-primary">
+            <span>RONDA {uiState.round}</span>
           </div>
         </div>
         
@@ -1690,20 +1667,10 @@ export default function Game() {
           <button onClick={handlePauseToggle} className="p-1 md:p-2 hover:bg-white/10 rounded-lg transition-colors border border-white/10">
             <Pause className="w-4 h-4 md:w-6 md:h-6" />
           </button>
-          <button onClick={toggleEditJoysticks} className={`p-1 md:p-2 rounded-lg transition-colors border ${editingJoysticks ? 'bg-green-600 border-green-400' : 'hover:bg-white/10 border-white/10'}`}>
-            <Move className="w-4 h-4 md:w-6 md:h-6" />
-          </button>
         </div>
       </header>
 
-      <main 
-        className="flex-1 relative flex items-center justify-center overflow-hidden"
-        onTouchMove={handleJoystickDrag}
-        onMouseMove={handleJoystickDrag}
-        onTouchEnd={handleJoystickDragEnd}
-        onMouseUp={handleJoystickDragEnd}
-        onMouseLeave={handleJoystickDragEnd}
-      >
+      <main className="flex-1 relative flex items-center justify-center overflow-hidden">
         <canvas 
           ref={canvasRef} 
           width={CANVAS_WIDTH} 
@@ -1715,70 +1682,46 @@ export default function Game() {
           }}
         />
         
-        {editingJoysticks && (
-          <div className="absolute inset-0 bg-black/50 z-20 flex items-center justify-center pointer-events-none">
-            <div className="text-center p-4 bg-gray-900/90 rounded-xl border border-green-500 pointer-events-auto">
-              <p className="text-sm text-green-400 mb-2">MODO EDICION</p>
-              <p className="text-[10px] text-gray-400 mb-3">Arrastra los joysticks a donde quieras</p>
-              <div className="flex flex-col gap-2 mb-4">
-                <label className="text-[10px] text-gray-400">TAMAÑO: {joystickSize}px</label>
-                <input 
-                  type="range" 
-                  min="50" 
-                  max="150" 
-                  value={joystickSize} 
-                  onChange={(e) => handleJoystickSizeChange(parseInt(e.target.value))}
-                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-500"
+        <FloatingJoystick side="left" onMove={handleMoveJoystick} />
+        <FloatingJoystick side="right" onMove={handleShootJoystick} />
+
+        <AnimatePresence>
+          {uiState.showRoundAnimation && (
+            <motion.div
+              key="round-animation"
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.5 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none"
+            >
+              <div className="text-center">
+                <motion.div
+                  initial={{ y: -50, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="text-lg text-primary/80 uppercase tracking-widest mb-2"
+                >
+                  Preparate
+                </motion.div>
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: [0, 1.2, 1] }}
+                  transition={{ delay: 0.4, duration: 0.6 }}
+                  className="text-6xl md:text-8xl font-arcade text-white drop-shadow-[0_0_30px_rgba(236,72,153,0.8)]"
+                >
+                  RONDA {uiState.round}
+                </motion.div>
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: "100%" }}
+                  transition={{ delay: 0.8, duration: 1 }}
+                  className="h-1 bg-gradient-to-r from-transparent via-primary to-transparent mt-4 mx-auto max-w-xs"
                 />
-                <div className="flex justify-between text-[8px] text-gray-500">
-                  <span>Pequeño</span>
-                  <span>Grande</span>
-                </div>
               </div>
-              <button onClick={toggleEditJoysticks} className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded text-xs">LISTO</button>
-            </div>
-          </div>
-        )}
-        
-        {editingJoysticks ? (
-          <>
-            <div 
-              className="absolute origin-bottom-left z-30 cursor-move ring-4 ring-green-500 ring-opacity-80 rounded-full animate-pulse"
-              style={{ left: joystickPositions.move.x, bottom: joystickPositions.move.y }}
-              onTouchStart={() => handleJoystickDragStart('move')}
-              onMouseDown={() => handleJoystickDragStart('move')}
-            > 
-              <div className="pointer-events-none">
-                <Joystick size={joystickSize} onMove={() => {}} label="MOVER" />
-              </div>
-            </div>
-            <div 
-              className="absolute origin-bottom-right z-30 cursor-move ring-4 ring-green-500 ring-opacity-80 rounded-full animate-pulse"
-              style={{ right: joystickPositions.shoot.x, bottom: joystickPositions.shoot.y }}
-              onTouchStart={() => handleJoystickDragStart('shoot')}
-              onMouseDown={() => handleJoystickDragStart('shoot')}
-            > 
-              <div className="pointer-events-none">
-                <Joystick size={joystickSize} onMove={() => {}} label="DISPARAR" />
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <div 
-              className="absolute origin-bottom-left z-30"
-              style={{ left: joystickPositions.move.x, bottom: joystickPositions.move.y }}
-            > 
-              <Joystick size={joystickSize} onMove={handleMoveJoystick} label="MOVER" />
-            </div>
-            <div 
-              className="absolute origin-bottom-right z-30"
-              style={{ right: joystickPositions.shoot.x, bottom: joystickPositions.shoot.y }}
-            > 
-              <Joystick size={joystickSize} onMove={handleShootJoystick} label="DISPARAR" />
-            </div>
-          </>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <AnimatePresence>
           {uiState.showTempSkills && (

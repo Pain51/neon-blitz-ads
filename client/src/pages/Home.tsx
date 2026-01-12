@@ -3,9 +3,23 @@ import { useLocation } from 'wouter';
 import { useScores } from '@/hooks/use-scores';
 import { GameButton } from '@/components/ui/GameButton';
 import { motion } from 'framer-motion';
-import { Trophy, Play, Skull, Crosshair, Star, X } from 'lucide-react';
+import { Trophy, Play, Crosshair, Star, X } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { useAdMob } from '@/hooks/useAdMob';
+import backgroundImage from '@assets/1768201152978_1768202039214.jpg';
+
+const starPositions = Array.from({ length: 20 }, () => ({
+  x: `${Math.random() * 100}%`,
+  y: `${Math.random() * 100}%`,
+  delay: Math.random() * 2,
+  duration: 2 + Math.random() * 3
+}));
+
+const particlePositions = Array.from({ length: 10 }, () => ({
+  y: `${Math.random() * 100}%`,
+  delay: Math.random() * 5,
+  duration: 10 + Math.random() * 10
+}));
 
 export default function Home() {
   const [, setLocation] = useLocation();
@@ -94,7 +108,12 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${backgroundImage})` }}
+      />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
       {/* Weapon Selection Modal */}
       <AnimatePresence>
         {showWeaponSelection && (
@@ -281,10 +300,41 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* Background Ambience */}
+      {/* Background Ambience with Enhanced Effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[100px] animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-secondary/20 rounded-full blur-[80px]" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/30 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-secondary/30 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/2 w-80 h-80 bg-cyan-500/20 rounded-full blur-[150px] animate-pulse" style={{ animationDelay: '0.5s' }} />
+        
+        {/* Animated Stars - using CSS animation instead of framer motion for performance */}
+        {starPositions.map((star, i) => (
+          <div
+            key={`star-${i}`}
+            className="absolute w-1 h-1 bg-white rounded-full animate-twinkle"
+            style={{ 
+              left: star.x,
+              top: star.y,
+              animationDelay: `${star.delay}s`,
+              animationDuration: `${star.duration}s`
+            }}
+          />
+        ))}
+
+        {/* Moving Particles - using CSS animation for performance */}
+        {particlePositions.map((particle, i) => (
+          <div
+            key={`particle-${i}`}
+            className="absolute w-2 h-2 bg-primary/40 rounded-full animate-float-right"
+            style={{ 
+              top: particle.y,
+              animationDelay: `${particle.delay}s`,
+              animationDuration: `${particle.duration}s`
+            }}
+          />
+        ))}
+
+        {/* Scan Line Effect */}
+        <div className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary/50 to-transparent animate-scan" />
       </div>
 
       <motion.div 

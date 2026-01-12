@@ -72,3 +72,50 @@
 .text-neon-blue {
   text-shadow: 0 0 5px rgba(0, 255, 255, 0.5), 0 0 10px rgba(0, 255, 255, 0.3);
 }
+
+/* Home screen animations - GPU accelerated */
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.5);
+  }
+}
+
+@keyframes float-right {
+  0% {
+    transform: translateX(-100vw);
+  }
+  100% {
+    transform: translateX(100vw);
+  }
+}
+
+@keyframes scan {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+.animate-twinkle {
+  animation: twinkle 3s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+.animate-float-right {
+  animation: float-right 15s linear infinite;
+  will-change: transform;
+  left: 0;
+}
+
+.animate-scan {
+  animation: scan 4s linear infinite;
+  will-change: transform;
+  top: 0;
+}
