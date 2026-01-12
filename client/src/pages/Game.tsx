@@ -242,6 +242,10 @@ export default function Game() {
       shoot: { x: -24, y: 24 }
     };
   });
+  const [joystickSize, setJoystickSize] = useState(() => {
+    const saved = localStorage.getItem('joystickSize');
+    return saved ? parseInt(saved) : 80;
+  });
   const [editingJoysticks, setEditingJoysticks] = useState(false);
   const [draggingJoystick, setDraggingJoystick] = useState<'move' | 'shoot' | null>(null);
   
@@ -1631,6 +1635,11 @@ export default function Game() {
     }
   };
 
+  const handleJoystickSizeChange = (newSize: number) => {
+    setJoystickSize(newSize);
+    localStorage.setItem('joystickSize', newSize.toString());
+  };
+
   const toggleEditJoysticks = () => {
     const newState = !editingJoysticks;
     setEditingJoysticks(newState);
@@ -1710,9 +1719,23 @@ export default function Game() {
           <div className="absolute inset-0 bg-black/50 z-20 flex items-center justify-center pointer-events-none">
             <div className="text-center p-4 bg-gray-900/90 rounded-xl border border-green-500 pointer-events-auto">
               <p className="text-sm text-green-400 mb-2">MODO EDICION</p>
-              <p className="text-[10px] text-gray-400">Arrastra los joysticks a donde quieras</p>
-              <p className="text-[8px] text-yellow-400 mt-1">Los joysticks ahora son mas grandes para facilitar el posicionamiento</p>
-              <button onClick={toggleEditJoysticks} className="mt-4 px-4 py-2 bg-green-600 hover:bg-green-500 rounded text-xs">LISTO</button>
+              <p className="text-[10px] text-gray-400 mb-3">Arrastra los joysticks a donde quieras</p>
+              <div className="flex flex-col gap-2 mb-4">
+                <label className="text-[10px] text-gray-400">TAMAÑO: {joystickSize}px</label>
+                <input 
+                  type="range" 
+                  min="50" 
+                  max="150" 
+                  value={joystickSize} 
+                  onChange={(e) => handleJoystickSizeChange(parseInt(e.target.value))}
+                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-500"
+                />
+                <div className="flex justify-between text-[8px] text-gray-500">
+                  <span>Pequeño</span>
+                  <span>Grande</span>
+                </div>
+              </div>
+              <button onClick={toggleEditJoysticks} className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded text-xs">LISTO</button>
             </div>
           </div>
         )}
@@ -1720,39 +1743,39 @@ export default function Game() {
         {editingJoysticks ? (
           <>
             <div 
-              className="absolute transform scale-100 md:scale-125 origin-bottom-left z-30 cursor-move ring-4 ring-green-500 ring-opacity-80 rounded-full animate-pulse"
+              className="absolute origin-bottom-left z-30 cursor-move ring-4 ring-green-500 ring-opacity-80 rounded-full animate-pulse"
               style={{ left: joystickPositions.move.x, bottom: joystickPositions.move.y }}
               onTouchStart={() => handleJoystickDragStart('move')}
               onMouseDown={() => handleJoystickDragStart('move')}
             > 
               <div className="pointer-events-none">
-                <Joystick size={150} onMove={() => {}} label="MOVER" />
+                <Joystick size={joystickSize} onMove={() => {}} label="MOVER" />
               </div>
             </div>
             <div 
-              className="absolute transform scale-100 md:scale-125 origin-bottom-right z-30 cursor-move ring-4 ring-green-500 ring-opacity-80 rounded-full animate-pulse"
+              className="absolute origin-bottom-right z-30 cursor-move ring-4 ring-green-500 ring-opacity-80 rounded-full animate-pulse"
               style={{ right: joystickPositions.shoot.x, bottom: joystickPositions.shoot.y }}
               onTouchStart={() => handleJoystickDragStart('shoot')}
               onMouseDown={() => handleJoystickDragStart('shoot')}
             > 
               <div className="pointer-events-none">
-                <Joystick size={150} onMove={() => {}} label="DISPARAR" />
+                <Joystick size={joystickSize} onMove={() => {}} label="DISPARAR" />
               </div>
             </div>
           </>
         ) : (
           <>
             <div 
-              className="absolute transform scale-[0.6] md:scale-100 origin-bottom-left z-30"
+              className="absolute origin-bottom-left z-30"
               style={{ left: joystickPositions.move.x, bottom: joystickPositions.move.y }}
             > 
-              <Joystick size={120} onMove={handleMoveJoystick} label="MOVER" />
+              <Joystick size={joystickSize} onMove={handleMoveJoystick} label="MOVER" />
             </div>
             <div 
-              className="absolute transform scale-[0.6] md:scale-100 origin-bottom-right z-30"
+              className="absolute origin-bottom-right z-30"
               style={{ right: joystickPositions.shoot.x, bottom: joystickPositions.shoot.y }}
             > 
-              <Joystick size={120} onMove={handleShootJoystick} label="DISPARAR" />
+              <Joystick size={joystickSize} onMove={handleShootJoystick} label="DISPARAR" />
             </div>
           </>
         )}
