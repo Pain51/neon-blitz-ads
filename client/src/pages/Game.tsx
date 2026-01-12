@@ -10,7 +10,6 @@ import { useAdMob } from '@/hooks/useAdMob';
 import enemyNormalImg from '@assets/1768104330493_1768106295454.jpg';
 import enemySpecialImg from '@assets/1768104549092_1768106295467.jpg';
 import enemyBossImg from '@assets/1768104716780_1768106295437.jpg';
-import mapBackgroundImg from '@assets/generated_images/dark_neon_space_game_background.png';
 
 // --- GAME CONSTANTS ---
 const CANVAS_WIDTH = 1200;
@@ -111,7 +110,6 @@ export default function Game() {
   const enemyNormalImgRef = useRef<HTMLImageElement | null>(null);
   const enemySpecialImgRef = useRef<HTMLImageElement | null>(null);
   const enemyBossImgRef = useRef<HTMLImageElement | null>(null);
-  const backgroundImageRef = useRef<HTMLImageElement | null>(null);
 
   // Game State Refs
   const gameState = useRef({
@@ -213,10 +211,10 @@ export default function Game() {
       
       let newWidth, newHeight;
       if (containerAspectRatio > aspectRatio) {
-        newHeight = containerHeight - 10;
+        newHeight = containerHeight;
         newWidth = newHeight * aspectRatio;
       } else {
-        newWidth = containerWidth - 10;
+        newWidth = containerWidth;
         newHeight = newWidth / aspectRatio;
       }
       
@@ -370,10 +368,6 @@ export default function Game() {
     const boss = new Image();
     boss.src = enemyBossImg;
     removeWhiteBackground(boss, enemyBossImgRef);
-
-    const bgImg = new Image();
-    bgImg.src = mapBackgroundImg;
-    bgImg.onload = () => { backgroundImageRef.current = bgImg; };
   }, []);
 
   useEffect(() => {
@@ -1249,13 +1243,9 @@ export default function Game() {
         ctx.translate(shakeX, shakeY);
       }
       
-      // Draw background image
-      if (backgroundImageRef.current && backgroundImageRef.current.complete) {
-        ctx.drawImage(backgroundImageRef.current, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-      } else {
-        ctx.fillStyle = '#050508';
-        ctx.fillRect(-10, -10, CANVAS_WIDTH + 20, CANVAS_HEIGHT + 20);
-      }
+      // Draw dark background
+      ctx.fillStyle = '#050508';
+      ctx.fillRect(-10, -10, CANVAS_WIDTH + 20, CANVAS_HEIGHT + 20);
       
       const gridSize = 50;
       const time = Date.now() * 0.001;
