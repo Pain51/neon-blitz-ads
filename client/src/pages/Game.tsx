@@ -14,10 +14,10 @@ import enemyBossImg from '@assets/1768104716780_1768106295437.jpg';
 // --- GAME CONSTANTS ---
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 800;
-const PLAYER_SIZE = 24;
+const PLAYER_SIZE = 38;
 const BULLET_SIZE_BASE = 6;
-const ENEMY_SIZE_NORMAL = 43;
-const ENEMY_SIZE_BOSS = 108;
+const ENEMY_SIZE_NORMAL = 69;
+const ENEMY_SIZE_BOSS = 173;
 const XP_GEM_SIZE = 10;
 
 // Colors
@@ -1627,7 +1627,7 @@ export default function Game() {
 
   return (
     <div className="flex flex-col h-screen bg-[#0a0a0a] text-white overflow-hidden font-press-start select-none">
-      <header className="flex justify-between items-center p-2 md:p-4 border-b border-white/10 bg-black/50 backdrop-blur-md">
+      <header className="flex justify-between items-center p-1 md:p-2 border-b border-white/10 bg-black/50 backdrop-blur-md">
         <div className="flex flex-col gap-0 md:gap-1">
           <div className="flex items-center gap-1 md:gap-2">
             <Star className="w-4 h-4 md:w-5 md:h-5 text-yellow-400 fill-yellow-400" />
